@@ -5,22 +5,40 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import DonorDashboard from "./pages/DonorDashboard";
 import AddFoodBatch from "./pages/AddFoodBatch";
+import NGODashboard from "./pages/NGODashboard";
 
 import "./App.css";
 
 function App() {
   const [page, setPage] = useState("landing");
+  const [user, setUser] = useState(null);
 
-  const handleLogin = (role) => {
+  const handleLogin = (role, userData) => {
+    setUser(userData);
+
     if (role === "DONOR") {
       setPage("donor-dashboard");
       return;
     }
 
-    alert(`${role} dashboard will be added next.`);
+    if (role === "NGO") {
+      setPage("ngo-dashboard");
+      return;
+    }
+
+    if (role === "ADMIN") {
+      alert("Admin dashboard will be added next.");
+      return;
+    }
+
+    if (role === "DELIVERY") {
+      alert("Delivery dashboard will be added next.");
+      return;
+    }
   };
 
   const handleLogout = () => {
+    setUser(null);
     setPage("login");
   };
 
@@ -58,6 +76,13 @@ function App() {
         <DonorDashboard
           onLogout={handleLogout}
           onAddFood={handleAddFood}
+        />
+      )}
+
+      {page === "ngo-dashboard" && (
+        <NGODashboard
+          onLogout={handleLogout}
+          ngoId={user?.ngoId}
         />
       )}
 

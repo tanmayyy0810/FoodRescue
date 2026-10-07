@@ -1,29 +1,55 @@
 import { useState } from "react";
 import "./Login.css";
 
-function Login({ onBack, onRegister, onLogin }){
+function Login({ onBack, onRegister, onLogin }) {
     const [role, setRole] = useState("DONOR");
-    const [email, setEmail] = useState("");
+    const [username, setUsername] = useState("");
     const [password, setPassword] = useState("");
     const [error, setError] = useState("");
+    const [loading, setLoading] = useState(false);
 
-    const handleSubmit = (event) => {
+    const handleSubmit = async (event) => {
         event.preventDefault();
         setError("");
 
-        if (!email || !password) {
-            setError("Please enter both email and password.");
+        if (!username || !password) {
+            setError("Please enter both username and password.");
             return;
         }
 
-        if (!email.includes("@")) {
-            setError("Please enter a valid email address.");
-            return;
-        }
+        setLoading(true);
 
-        // Temporary frontend login.
-        // Oracle authentication will be connected later.
-        onLogin(role);
+        try {
+            const response = await fetch("http://localhost:5000/api/login", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    username,
+                    password,
+                }),
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                setError(data.message || "Login failed.");
+                return;
+            }
+
+            if (data.role !== role) {
+                setError(`This account is registered as ${data.role}.`);
+                return;
+            }
+
+            onLogin(data.role, data);
+        } catch (error) {
+            console.error("Login error:", error);
+            setError("Unable to connect to the server.");
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
@@ -135,19 +161,21 @@ function Login({ onBack, onRegister, onLogin }){
 
                     <form onSubmit={handleSubmit}>
 
-                        {/* Email */}
+                        {/* Username */}
                         <div className="input-group">
 
-                            <label htmlFor="email">
-                                Email address
+                            <label htmlFor="username">
+                                Username
                             </label>
 
                             <input
-                                id="email"
-                                type="email"
-                                placeholder="you@example.com"
-                                value={email}
-                                onChange={(event) => setEmail(event.target.value)}
+                                id="username"
+                                type="text"
+                                placeholder="Enter your username"
+                                value={username}
+                                onChange={(event) =>
+                                    setUsername(event.target.value)
+                                }
                             />
 
                         </div>
@@ -176,7 +204,9 @@ function Login({ onBack, onRegister, onLogin }){
                                 type="password"
                                 placeholder="Enter your password"
                                 value={password}
-                                onChange={(event) => setPassword(event.target.value)}
+                                onChange={(event) =>
+                                    setPassword(event.target.value)
+                                }
                             />
 
                         </div>
@@ -194,9 +224,10 @@ function Login({ onBack, onRegister, onLogin }){
                         <button
                             type="submit"
                             className="login-button"
+                            disabled={loading}
                         >
-                            Sign in
-                            <span>→</span>
+                            {loading ? "Signing in..." : "Sign in"}
+                            {!loading && <span>→</span>}
                         </button>
 
                     </form>

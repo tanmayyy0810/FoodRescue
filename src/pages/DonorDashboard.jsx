@@ -230,14 +230,14 @@ function DonorDashboard({ onLogout, onAddFood }) {
                                 </div>
                             ) : (
                                 batches.map((batch) => {
-                                    const foodCode = batch[2]
+                                    const foodCode = batch[3]
                                         .split(" ")
                                         .map((word) => word[0])
                                         .join("")
                                         .slice(0, 2)
                                         .toUpperCase();
 
-                                    const expiry = new Date(batch[7]);
+                                    const expiry = new Date(batch[8]);
 
                                     return (
                                         <div className="batch-row" key={batch[0]}>
@@ -246,13 +246,13 @@ function DonorDashboard({ onLogout, onAddFood }) {
                                                 <div className="food-code">{foodCode}</div>
 
                                                 <div>
-                                                    <strong>{batch[2]}</strong>
+                                                    <strong>{batch[3]}</strong>
                                                     <span>Batch #{batch[0]}</span>
                                                 </div>
                                             </div>
 
                                             <span>
-                                                {batch[4]} {batch[5].toLowerCase()}
+                                                {batch[5]} {batch[6].toLowerCase()}
                                             </span>
 
                                             <span>
@@ -263,7 +263,7 @@ function DonorDashboard({ onLogout, onAddFood }) {
                                             </span>
 
                                             <span className="batch-status available">
-                                                {batch[9]}
+                                                {batch[10]}
                                             </span>
 
                                         </div>
