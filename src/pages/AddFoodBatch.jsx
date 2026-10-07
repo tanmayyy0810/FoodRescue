@@ -81,15 +81,14 @@ function AddFoodBatch({ onBack }) {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          batchId: 1007,
-          donorId: 1,
-          itemId,
-          quantity: Number(formData.quantity),
-          unit: formData.unit,
-          preparedTime: formData.preparedTime.replace("T", " ") + ":00",
-          expiryTime: formData.expiryTime.replace("T", " ") + ":00",
-          storageCondition: formData.storageCondition,
-        }),
+    donorId: 1,
+    itemId,
+    quantity: Number(formData.quantity),
+    unit: formData.unit,
+    preparedTime: formData.preparedTime.replace("T", " ") + ":00",
+    expiryTime: formData.expiryTime.replace("T", " ") + ":00",
+    storageCondition: formData.storageCondition,
+}),
       }
     );
 

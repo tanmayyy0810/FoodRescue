@@ -88,7 +88,6 @@ app.post("/api/food-batches", async (req, res) => {
 
     try {
         const {
-            batchId,
             donorId,
             itemId,
             quantity,
@@ -104,7 +103,6 @@ app.post("/api/food-batches", async (req, res) => {
             `
             BEGIN
                 FOODRESCUE_PKG.ADD_FOOD_BATCH(
-                    :batchId,
                     :donorId,
                     :itemId,
                     :quantity,
@@ -116,7 +114,6 @@ app.post("/api/food-batches", async (req, res) => {
             END;
             `,
             {
-                batchId,
                 donorId,
                 itemId,
                 quantity,
@@ -126,6 +123,13 @@ app.post("/api/food-batches", async (req, res) => {
                 storageCondition
             }
         );
+
+        const result = await connection.execute(`
+            SELECT SEQ_FOOD_BATCH.CURRVAL AS batch_id
+            FROM DUAL
+        `);
+
+        const batchId = result.rows[0][0];
 
         res.status(201).json({
             message: "Food batch added successfully",
