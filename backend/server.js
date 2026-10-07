@@ -38,12 +38,14 @@ app.get("/", async (req, res) => {
 
 // Get available food batches
 app.get("/api/food-batches", async (req, res) => {
+    const donorId = req.query.donorId;
     let connection;
 
     try {
         connection = await getConnection();
 
-        const result = await connection.execute(`
+        const result = await connection.execute(
+    `
     SELECT
         fb.batch_id,
         fb.item_id,
@@ -66,8 +68,12 @@ app.get("/api/food-batches", async (req, res) => {
         ON fi.category_id = fc.category_id
     WHERE fb.status = 'AVAILABLE'
       AND GET_REMAINING_QUANTITY(fb.batch_id) > 0
+      AND (:donorId IS NULL OR fb.donor_id = :donorId)
     ORDER BY fb.expiry_time
-`);
+`,
+    {
+        donorId: donorId ? Number(donorId) : null
+    });
 
         res.json(result.rows);
 
@@ -429,6 +435,181 @@ app.post("/api/login", async (req, res) => {
 
         res.status(500).json({
             message: "Login failed",
+            error: error.message
+        });
+
+    } finally {
+        if (connection) {
+            await connection.close();
+        }
+    }
+});
+app.get("/api/donors/:donorId/allocations", async (req, res) => {
+    let connection;
+
+    try {
+        const donorId = Number(req.params.donorId);
+
+        if (!Number.isInteger(donorId) || donorId <= 0) {
+            return res.status(400).json({
+                message: "Invalid donor ID"
+            });
+        }
+
+        connection = await getConnection();
+
+        const result = await connection.execute(
+            `
+            SELECT
+                a.allocation_id,
+                fi.item_name,
+                n.ngo_name,
+                a.allocated_quantity,
+                fb.unit,
+                a.allocation_date,
+                a.status
+            FROM ALLOCATION a
+            JOIN FOOD_BATCH fb
+                ON a.batch_id = fb.batch_id
+            JOIN FOOD_ITEM fi
+                ON fb.item_id = fi.item_id
+            JOIN REQUEST_ITEM ri
+                ON a.request_item_id = ri.request_item_id
+            JOIN NGO_REQUEST nr
+                ON ri.request_id = nr.request_id
+            JOIN NGO n
+                ON nr.ngo_id = n.ngo_id
+            WHERE fb.donor_id = :donorId
+            ORDER BY a.allocation_date DESC
+            `,
+            { donorId }
+        );
+
+        const allocations = result.rows.map((row) => ({
+            allocationId: row[0],
+            itemName: row[1],
+            ngoName: row[2],
+            allocatedQuantity: row[3],
+            unit: row[4],
+            allocationDate: row[5],
+            status: row[6]
+        }));
+
+        res.json(allocations);
+
+    } catch (error) {
+        console.error("Donor allocations error:", error);
+
+        res.status(500).json({
+            message: "Failed to fetch donor allocations",
+            error: error.message
+        });
+    } finally {
+        if (connection) {
+            await connection.close();
+        }
+    }
+});
+// Get donor dashboard data
+app.get("/api/donors/:donorId/dashboard", async (req, res) => {
+    let connection;
+
+    try {
+        const donorId = Number(req.params.donorId);
+
+        if (!Number.isInteger(donorId) || donorId <= 0) {
+            return res.status(400).json({
+                message: "Invalid donor ID"
+            });
+        }
+
+        connection = await getConnection();
+
+        const donorResult = await connection.execute(
+            `
+            SELECT
+                donor_id,
+                donor_name,
+                email,
+                phone,
+                address,
+                status
+            FROM DONOR
+            WHERE donor_id = :donorId
+            `,
+            { donorId }
+        );
+
+        if (donorResult.rows.length === 0) {
+            return res.status(404).json({
+                message: "Donor not found"
+            });
+        }
+
+        const donor = donorResult.rows[0];
+
+        const statsResult = await connection.execute(
+            `
+            SELECT
+                COUNT(*) AS total_batches,
+                SUM(
+                    CASE
+                        WHEN status = 'AVAILABLE'
+                         AND GET_REMAINING_QUANTITY(batch_id) > 0
+                        THEN 1
+                        ELSE 0
+                    END
+                ) AS active_batches,
+                SUM(
+                    CASE
+                        WHEN expiry_time <= SYSTIMESTAMP + INTERVAL '24' HOUR
+                         AND expiry_time > SYSTIMESTAMP
+                         AND GET_REMAINING_QUANTITY(batch_id) > 0
+                        THEN 1
+                        ELSE 0
+                    END
+                ) AS expiring_soon
+            FROM FOOD_BATCH
+            WHERE donor_id = :donorId
+            `,
+            { donorId }
+        );
+
+        const allocationResult = await connection.execute(
+            `
+            SELECT
+                NVL(SUM(a.allocated_quantity), 0) AS allocated_quantity
+            FROM ALLOCATION a
+            JOIN FOOD_BATCH fb
+                ON a.batch_id = fb.batch_id
+            WHERE fb.donor_id = :donorId
+              AND a.status <> 'CANCELLED'
+            `,
+            { donorId }
+        );
+
+        res.json({
+            donor: {
+                donorId: donor[0],
+                donorName: donor[1],
+                email: donor[2],
+                phone: donor[3],
+                address: donor[4],
+                status: donor[5]
+            },
+            stats: {
+                totalBatches: statsResult.rows[0][0] || 0,
+                activeBatches: statsResult.rows[0][1] || 0,
+                expiringSoon: statsResult.rows[0][2] || 0,
+                allocatedQuantity: allocationResult.rows[0][0] || 0
+            }
+        });
+
+    } catch (error) {
+        console.error("Donor dashboard error:", error);
+
+        res.status(500).json({
+            message: "Failed to fetch donor dashboard data",
             error: error.message
         });
 

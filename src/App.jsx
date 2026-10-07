@@ -76,6 +76,7 @@ function App() {
         <DonorDashboard
           onLogout={handleLogout}
           onAddFood={handleAddFood}
+          donorId={user?.donorId}
         />
       )}
 

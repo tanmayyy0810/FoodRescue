@@ -3,22 +3,83 @@ import { useEffect, useState } from "react";
 
 
 
-function DonorDashboard({ onLogout, onAddFood }) {
+function DonorDashboard({ onLogout, onAddFood, donorId }) {
     const [batches, setBatches] = useState([]);
+    const [donor, setDonor] = useState(null);
+    const [stats, setStats] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [allocations, setAllocations] = useState([]);
 
     useEffect(() => {
-        fetch("http://localhost:5000/api/food-batches")
-            .then((response) => response.json())
-            .then((data) => {
-                setBatches(data);
+        if (!donorId) {
+            return;
+        }
+
+        const loadDashboard = async () => {
+            try {
+                const [
+                    batchResponse,
+                    dashboardResponse,
+                    allocationsResponse
+                ] = await Promise.all([
+                    fetch(`http://localhost:5000/api/food-batches?donorId=${donorId}`),
+                    fetch(`http://localhost:5000/api/donors/${donorId}/dashboard`),
+                    fetch(`http://localhost:5000/api/donors/${donorId}/allocations`)
+                ]);
+
+                const batchData = await batchResponse.json();
+                const dashboardData = await dashboardResponse.json();
+                const allocationsData = await allocationsResponse.json();
+
+                if (!batchResponse.ok) {
+                    throw new Error(
+                        batchData.message || "Failed to fetch food batches"
+                    );
+                }
+
+                if (!dashboardResponse.ok) {
+                    throw new Error(
+                        dashboardData.message || "Failed to fetch donor dashboard"
+                    );
+                }
+
+                if (!allocationsResponse.ok) {
+                    throw new Error(
+                        allocationsData.message || "Failed to fetch allocations"
+                    );
+                }
+
+                setBatches(batchData);
+                setDonor(dashboardData.donor);
+                setStats(dashboardData.stats);
+                setAllocations(allocationsData);
+
+            } catch (error) {
+                console.error("Failed to fetch donor dashboard:", error);
+            } finally {
                 setLoading(false);
-            })
-            .catch((error) => {
-                console.error("Failed to fetch food batches:", error);
-                setLoading(false);
-            });
-    }, []);
+            }
+        };
+
+        loadDashboard();
+    }, [donorId]);
+
+    const today = new Date();
+
+    const formattedDate = today.toLocaleDateString("en-IN", {
+        day: "2-digit",
+        month: "long",
+        year: "numeric"
+    });
+
+    const hour = today.getHours();
+
+    const greeting =
+        hour < 12
+            ? "Good morning"
+            : hour < 17
+                ? "Good afternoon"
+                : "Good evening";
     return (
         <div className="donor-dashboard">
 
@@ -87,7 +148,7 @@ function DonorDashboard({ onLogout, onAddFood }) {
                         </div>
 
                         <div>
-                            <strong>Rahul Sharma</strong>
+                            <strong>{donor?.donorName || "Donor"}</strong>
                             <span>Donor</span>
                         </div>
 
@@ -116,7 +177,7 @@ function DonorDashboard({ onLogout, onAddFood }) {
                             DONOR PORTAL
                         </p>
 
-                        <h1>Good evening, Rahul.</h1>
+                        <h1>{greeting}, {donor?.donorName || "Donor"}.</h1>
 
                         <p>
                             Here's what's happening with your food donations.
@@ -125,7 +186,7 @@ function DonorDashboard({ onLogout, onAddFood }) {
 
                     <div className="header-date">
                         <span>Today</span>
-                        <strong>07 October 2026</strong>
+                        <strong>{formattedDate}</strong>
                     </div>
 
                 </header>
@@ -139,10 +200,10 @@ function DonorDashboard({ onLogout, onAddFood }) {
 
                         <span>Total donated</span>
 
-                        <strong>1,240</strong>
+                        <strong>{stats?.totalBatches ?? 0}</strong>
 
                         <small>
-                            meals donated
+                            food batches registered
                         </small>
 
                     </div>
@@ -152,7 +213,7 @@ function DonorDashboard({ onLogout, onAddFood }) {
 
                         <span>Active batches</span>
 
-                        <strong>8</strong>
+                        <strong>{stats?.activeBatches ?? 0}</strong>
 
                         <small>
                             currently available
@@ -165,10 +226,10 @@ function DonorDashboard({ onLogout, onAddFood }) {
 
                         <span>Allocated</span>
 
-                        <strong>1,080</strong>
+                        <strong>{stats?.allocatedQuantity ?? 0}</strong>
 
                         <small>
-                            meals redistributed
+                            quantity redistributed
                         </small>
 
                     </div>
@@ -178,7 +239,7 @@ function DonorDashboard({ onLogout, onAddFood }) {
 
                         <span>Expiring soon</span>
 
-                        <strong>3</strong>
+                        <strong>{stats?.expiringSoon ?? 0}</strong>
 
                         <small>
                             batches need attention
@@ -355,61 +416,47 @@ function DonorDashboard({ onLogout, onAddFood }) {
                         </div>
 
 
-                        <div className="allocation-row">
+                        {allocations.length === 0 ? (
+                            <div className="allocation-row">
+                                <span>No allocations recorded yet.</span>
+                            </div>
+                        ) : (
+                            allocations.map((allocation) => (
+                                <div
+                                    className="allocation-row"
+                                    key={allocation.allocationId}
+                                >
 
-                            <span className="allocation-food">
-                                Vegetable Rice
-                            </span>
+                                    <span className="allocation-food">
+                                        {allocation.itemName}
+                                    </span>
 
-                            <span>Hope Foundation</span>
+                                    <span>
+                                        {allocation.ngoName}
+                                    </span>
 
-                            <span>60 meals</span>
+                                    <span>
+                                        {allocation.allocatedQuantity}{" "}
+                                        {allocation.unit.toLowerCase()}
+                                    </span>
 
-                            <span>07 Oct 2026</span>
+                                    <span>
+                                        {new Date(
+                                            allocation.allocationDate
+                                        ).toLocaleDateString("en-GB", {
+                                            day: "2-digit",
+                                            month: "short",
+                                            year: "numeric"
+                                        })}
+                                    </span>
 
-                            <span className="allocation-status">
-                                Confirmed
-                            </span>
+                                    <span className="allocation-status">
+                                        {allocation.status}
+                                    </span>
 
-                        </div>
-
-
-                        <div className="allocation-row">
-
-                            <span className="allocation-food">
-                                Chapati
-                            </span>
-
-                            <span>Vellore Community Kitchen</span>
-
-                            <span>80 meals</span>
-
-                            <span>07 Oct 2026</span>
-
-                            <span className="allocation-status">
-                                Delivered
-                            </span>
-
-                        </div>
-
-
-                        <div className="allocation-row">
-
-                            <span className="allocation-food">
-                                Bread Loaf
-                            </span>
-
-                            <span>Care Shelter</span>
-
-                            <span>20 units</span>
-
-                            <span>06 Oct 2026</span>
-
-                            <span className="allocation-status">
-                                Delivered
-                            </span>
-
-                        </div>
+                                </div>
+                            ))
+                        )}
 
                     </div>
 
