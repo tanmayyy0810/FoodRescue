@@ -378,6 +378,410 @@ app.post("/api/allocations", async (req, res) => {
         }
     }
 });
+app.get("/api/admin/pending-organizations", async (req, res) => {
+    let connection;
+
+    try {
+        connection = await getConnection();
+
+        const donorResult = await connection.execute(`
+            SELECT
+                donor_id,
+                donor_name,
+                email,
+                phone,
+                address,
+                registration_date,
+                status
+            FROM DONOR
+            WHERE status = 'PENDING'
+            ORDER BY registration_date DESC
+        `);
+
+        const ngoResult = await connection.execute(`
+            SELECT
+                ngo_id,
+                ngo_name,
+                email,
+                phone,
+                address,
+                registration_date,
+                status
+            FROM NGO
+            WHERE status = 'PENDING'
+            ORDER BY registration_date DESC
+        `);
+
+        res.json({
+            donors: donorResult.rows,
+            ngos: ngoResult.rows
+        });
+
+    } catch (error) {
+        console.error("Pending organizations error:", error);
+
+        res.status(500).json({
+            message: "Failed to fetch pending organizations",
+            error: error.message
+        });
+
+    } finally {
+        if (connection) {
+            await connection.close();
+        }
+    }
+});
+app.post("/api/admin/approve-organization", async (req, res) => {
+    let connection;
+
+    try {
+        const {
+            accountType,
+            organizationId
+        } = req.body;
+
+        if (!accountType || !organizationId) {
+            return res.status(400).json({
+                message: "Account type and organization ID are required"
+            });
+        }
+
+        connection = await getConnection();
+
+        await connection.execute(
+            `
+            BEGIN
+                APPROVE_ORGANIZATION(
+                    :accountType,
+                    :organizationId
+                );
+            END;
+            `,
+            {
+                accountType,
+                organizationId
+            }
+        );
+
+        res.json({
+            message: "Organization approved successfully"
+        });
+
+    } catch (error) {
+        console.error("Approval error:", error);
+
+        res.status(400).json({
+            message: "Failed to approve organization",
+            error: error.message
+        });
+
+    } finally {
+        if (connection) {
+            await connection.close();
+        }
+    }
+});
+app.post("/api/admin/reject-organization", async (req, res) => {
+    let connection;
+
+    try {
+        const { accountType, organizationId } = req.body;
+
+        if (!accountType || !organizationId) {
+            return res.status(400).json({
+                message: "Account type and organization ID are required"
+            });
+        }
+
+        connection = await getConnection();
+
+        await connection.execute(
+            `
+            BEGIN
+                REJECT_ORGANIZATION(
+                    :accountType,
+                    :organizationId
+                );
+            END;
+            `,
+            {
+                accountType,
+                organizationId
+            }
+        );
+
+        res.json({
+            message: "Organization rejected successfully"
+        });
+
+    } catch (error) {
+        console.error("Rejection error:", error);
+
+        res.status(400).json({
+            message: "Failed to reject organization",
+            error: error.message
+        });
+
+    } finally {
+        if (connection) {
+            await connection.close();
+        }
+    }
+});
+app.post("/api/admin/blacklist-organization", async (req, res) => {
+    let connection;
+
+    try {
+        const { accountType, organizationId } = req.body;
+
+        if (!accountType || !organizationId) {
+            return res.status(400).json({
+                message: "Account type and organization ID are required"
+            });
+        }
+
+        connection = await getConnection();
+
+        await connection.execute(
+            `
+            BEGIN
+                UPDATE_ORGANIZATION_ACCESS(
+                    :accountType,
+                    :organizationId,
+                    'BLACKLIST'
+                );
+            END;
+            `,
+            {
+                accountType,
+                organizationId
+            }
+        );
+
+        res.json({
+            message: "Organization blacklisted successfully"
+        });
+
+    } catch (error) {
+        console.error("Blacklist error:", error);
+
+        res.status(400).json({
+            message: "Failed to blacklist organization",
+            error: error.message
+        });
+
+    } finally {
+        if (connection) {
+            await connection.close();
+        }
+    }
+});
+app.post("/api/admin/unblacklist-organization", async (req, res) => {
+    let connection;
+
+    try {
+        const { accountType, organizationId } = req.body;
+
+        if (!accountType || !organizationId) {
+            return res.status(400).json({
+                message: "Account type and organization ID are required"
+            });
+        }
+
+        connection = await getConnection();
+
+        await connection.execute(
+            `
+            BEGIN
+                UPDATE_ORGANIZATION_ACCESS(
+                    :accountType,
+                    :organizationId,
+                    'UNBLACKLIST'
+                );
+            END;
+            `,
+            {
+                accountType,
+                organizationId
+            }
+        );
+
+        res.json({
+            message: "Organization access restored successfully"
+        });
+
+    } catch (error) {
+        console.error("Unblacklist error:", error);
+
+        res.status(400).json({
+            message: "Failed to restore organization access",
+            error: error.message
+        });
+
+    } finally {
+        if (connection) {
+            await connection.close();
+        }
+    }
+});
+app.get("/api/admin/organizations", async (req, res) => {
+    let connection;
+
+    try {
+        connection = await getConnection();
+
+        const donorResult = await connection.execute(`
+            SELECT
+                donor_id,
+                donor_name,
+                email,
+                phone,
+                address,
+                registration_date,
+                status
+            FROM DONOR
+            ORDER BY registration_date DESC
+        `);
+
+        const ngoResult = await connection.execute(`
+            SELECT
+                ngo_id,
+                ngo_name,
+                email,
+                phone,
+                address,
+                registration_date,
+                status
+            FROM NGO
+            ORDER BY registration_date DESC
+        `);
+
+        res.json({
+            donors: donorResult.rows,
+            ngos: ngoResult.rows
+        });
+
+    } catch (error) {
+        console.error("Admin organizations error:", error);
+
+        res.status(500).json({
+            message: "Failed to fetch organizations",
+            error: error.message
+        });
+
+    } finally {
+        if (connection) {
+            await connection.close();
+        }
+    }
+});
+app.post("/api/register", async (req, res) => {
+    let connection;
+
+    try {
+        const {
+            accountType,
+            contactName,
+            organizationName,
+            email,
+            phone,
+            password,
+            address,
+            city,
+            username
+        } = req.body;
+
+        if (
+            !accountType ||
+            !contactName ||
+            !organizationName ||
+            !email ||
+            !phone ||
+            !password ||
+            !address ||
+            !city ||
+            !username
+        ) {
+            return res.status(400).json({
+                message: "All registration fields are required"
+            });
+        }
+
+        if (!["DONOR", "NGO"].includes(accountType)) {
+            return res.status(400).json({
+                message: "Invalid account type"
+            });
+        }
+
+        connection = await getConnection();
+
+        const result = await connection.execute(
+            `
+            DECLARE
+                v_user_id NUMBER;
+                v_organization_id NUMBER;
+            BEGIN
+                REGISTER_ORGANIZATION(
+                    :accountType,
+                    :contactName,
+                    :organizationName,
+                    :email,
+                    :phone,
+                    :password,
+                    :address,
+                    :city,
+                    :username,
+                    v_user_id,
+                    v_organization_id
+                );
+
+                :userId := v_user_id;
+                :organizationId := v_organization_id;
+            END;
+            `,
+            {
+                accountType,
+                contactName,
+                organizationName,
+                email,
+                phone,
+                password,
+                address,
+                city,
+                username,
+                userId: {
+                    dir: require("oracledb").BIND_OUT,
+                    type: require("oracledb").NUMBER
+                },
+                organizationId: {
+                    dir: require("oracledb").BIND_OUT,
+                    type: require("oracledb").NUMBER
+                }
+            }
+        );
+
+        res.status(201).json({
+            message: "Registration submitted successfully. Your account is pending admin approval.",
+            userId: result.outBinds.userId,
+            organizationId: result.outBinds.organizationId,
+            status: "PENDING"
+        });
+
+    } catch (error) {
+        console.error("Registration error:", error);
+
+        res.status(400).json({
+            message: "Registration failed",
+            error: error.message
+        });
+
+    } finally {
+        if (connection) {
+            await connection.close();
+        }
+    }
+});
+
 // User login
 app.post("/api/login", async (req, res) => {
     let connection;
@@ -396,16 +800,22 @@ app.post("/api/login", async (req, res) => {
         const result = await connection.execute(
             `
             SELECT
-                user_id,
-                username,
-                role,
-                donor_id,
-                ngo_id,
-                status
-            FROM USER_ACCOUNT
-            WHERE username = :username
-              AND password_hash = :password
-              AND status = 'ACTIVE'
+                u.user_id,
+                u.username,
+                u.role,
+                u.donor_id,
+                u.ngo_id,
+                u.status,
+                d.status AS donor_status,
+                n.status AS ngo_status
+            FROM USER_ACCOUNT u
+            LEFT JOIN DONOR d
+                ON u.donor_id = d.donor_id
+            LEFT JOIN NGO n
+                ON u.ngo_id = n.ngo_id
+            WHERE u.username = :username
+              AND u.password_hash = :password
+              AND u.status = 'ACTIVE'
             `,
             {
                 username,
@@ -421,13 +831,75 @@ app.post("/api/login", async (req, res) => {
 
         const user = result.rows[0];
 
+        const userId = user[0];
+        const loggedInUsername = user[1];
+        const role = user[2];
+        const donorId = user[3];
+        const ngoId = user[4];
+        const accountStatus = user[5];
+        const donorStatus = user[6];
+        const ngoStatus = user[7];
+
+        if (role === "DONOR") {
+            if (donorStatus === "PENDING") {
+                return res.status(403).json({
+                    message: "Your donor registration is pending admin approval."
+                });
+            }
+
+            if (donorStatus === "REJECTED") {
+                return res.status(403).json({
+                    message: "Your donor registration has been rejected by the admin."
+                });
+            }
+
+            if (donorStatus === "BLACKLISTED") {
+                return res.status(403).json({
+                    message: "Your donor account has been blacklisted. Please contact the administrator."
+                });
+            }
+
+            if (donorStatus !== "APPROVED") {
+                return res.status(403).json({
+                    message: "Your donor account is not approved."
+                });
+            }
+        }
+
+        if (role === "NGO") {
+            if (ngoStatus === "PENDING") {
+                return res.status(403).json({
+                    message: "Your NGO registration is pending admin approval."
+                });
+            }
+
+            if (ngoStatus === "REJECTED") {
+                return res.status(403).json({
+                    message: "Your NGO registration has been rejected by the admin."
+                });
+            }
+
+            if (ngoStatus === "BLACKLISTED") {
+                return res.status(403).json({
+                    message: "Your NGO account has been blacklisted. Please contact the administrator."
+                });
+            }
+
+            if (ngoStatus !== "APPROVED") {
+                return res.status(403).json({
+                    message: "Your NGO account is not approved."
+                });
+            }
+        }
+
         res.json({
             message: "Login successful",
-            userId: user[0],
-            username: user[1],
-            role: user[2],
-            donorId: user[3],
-            ngoId: user[4]
+            userId,
+            username: loggedInUsername,
+            role,
+            donorId,
+            ngoId,
+            status: accountStatus
         });
 
     } catch (error) {

@@ -6,6 +6,7 @@ function Register({ onBackToLogin }) {
 
   const [formData, setFormData] = useState({
     name: "",
+    username: "",
     organizationName: "",
     email: "",
     phone: "",
@@ -14,7 +15,6 @@ function Register({ onBackToLogin }) {
     address: "",
     city: "",
   });
-
   const [error, setError] = useState("");
 
   const handleChange = (event) => {
@@ -26,12 +26,13 @@ function Register({ onBackToLogin }) {
     }));
   };
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
     setError("");
 
     if (
       !formData.name ||
+      !formData.username ||
       !formData.organizationName ||
       !formData.email ||
       !formData.phone ||
@@ -59,11 +60,42 @@ function Register({ onBackToLogin }) {
       return;
     }
 
-    // Temporary frontend registration.
-    // This will later insert the user into Oracle.
-    alert(
-      `${accountType} registration submitted. Oracle integration will be added next.`
-    );
+   try {
+  const response = await fetch("http://localhost:5000/api/register", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      accountType,
+      contactName: formData.name,
+      organizationName: formData.organizationName,
+      email: formData.email,
+      phone: formData.phone,
+      password: formData.password,
+      address: formData.address,
+      city: formData.city,
+      username: formData.username,
+    }),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    setError(data.error || data.message || "Registration failed.");
+    return;
+  }
+
+  alert(
+    "Registration submitted successfully. Your account is pending admin approval."
+  );
+
+  onBackToLogin();
+
+} catch (error) {
+  console.error("Registration error:", error);
+  setError("Unable to connect to the server.");
+}
   };
 
   return (
@@ -206,6 +238,26 @@ function Register({ onBackToLogin }) {
             <form onSubmit={handleSubmit}>
 
               <div className="form-grid">
+
+                {/* USERNAME */}
+
+                <div className="register-input">
+
+                  <label htmlFor="username">
+                    Username
+                  </label>
+
+                  <input
+                    id="username"
+                    name="username"
+                    type="text"
+                    placeholder="Choose a username"
+                    value={formData.username}
+                    onChange={handleChange}
+                  />
+
+                </div>
+
 
                 {/* NAME */}
 

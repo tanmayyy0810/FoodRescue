@@ -1,0 +1,382 @@
+.admin-page {
+  min-height: 100vh;
+  background: #f5f7f6;
+  color: #17201b;
+}
+
+.admin-header {
+  height: 76px;
+  padding: 0 52px;
+  background: #ffffff;
+  border-bottom: 1px solid #e4e9e6;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.site-logo {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  font-size: 21px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+}
+
+.site-logo-mark {
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  background: #1d6b4f;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+}
+
+.admin-header-right {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+}
+
+.admin-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  color: #748078;
+}
+
+.admin-logout {
+  border: 1px solid #d9dfdc;
+  background: #ffffff;
+  color: #334039;
+  padding: 9px 17px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.admin-logout:hover {
+  background: #f4f6f5;
+}
+
+.admin-content {
+  width: min(1400px, calc(100% - 80px));
+  margin: 0 auto;
+  padding: 48px 0 70px;
+}
+
+.admin-heading {
+  margin-bottom: 34px;
+}
+
+.admin-eyebrow {
+  margin: 0 0 8px;
+  color: #1d6b4f;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 1.4px;
+}
+
+.admin-heading h1 {
+  margin: 0;
+  font-size: 34px;
+  letter-spacing: -1px;
+}
+
+.admin-heading p:last-child {
+  margin: 9px 0 0;
+  color: #68736d;
+  font-size: 15px;
+}
+
+.admin-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 26px;
+}
+
+.admin-stat-card {
+  background: #ffffff;
+  border: 1px solid #e1e7e3;
+  border-radius: 13px;
+  padding: 22px 24px;
+  box-shadow: 0 2px 8px rgba(20, 40, 30, 0.03);
+}
+
+.admin-stat-card span {
+  display: block;
+  color: #707b75;
+  font-size: 13px;
+  margin-bottom: 10px;
+}
+
+.admin-stat-card strong {
+  font-size: 29px;
+  letter-spacing: -0.8px;
+}
+
+.admin-stat-card.pending {
+  border-left: 4px solid #c58a18;
+}
+
+.admin-stat-card.approved {
+  border-left: 4px solid #26805b;
+}
+
+.admin-stat-card.blacklisted {
+  border-left: 4px solid #a94b4b;
+}
+
+.admin-panel {
+  background: #ffffff;
+  border: 1px solid #e1e7e3;
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 2px 10px rgba(20, 40, 30, 0.03);
+}
+
+.admin-panel-heading {
+  padding: 23px 26px;
+  border-bottom: 1px solid #e7ebe9;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.admin-panel-heading span {
+  color: #7a847e;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 1.2px;
+}
+
+.admin-panel-heading h2 {
+  margin: 5px 0 0;
+  font-size: 19px;
+  letter-spacing: -0.3px;
+}
+
+.refresh-button {
+  border: 1px solid #d5ddd8;
+  background: #ffffff;
+  color: #355044;
+  padding: 9px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.refresh-button:hover {
+  background: #f3f6f4;
+}
+
+.admin-error {
+  margin: 18px 24px 0;
+  padding: 12px 15px;
+  background: #fff2f2;
+  border: 1px solid #f0d1d1;
+  color: #9b4040;
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+.admin-loading,
+.admin-empty {
+  padding: 50px 25px;
+  text-align: center;
+  color: #77817b;
+}
+
+.organization-table-wrapper {
+  overflow-x: auto;
+}
+
+.organization-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 1050px;
+}
+
+.organization-table th {
+  text-align: left;
+  padding: 13px 18px;
+  background: #fafbfa;
+  color: #77817b;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  border-bottom: 1px solid #e5eae7;
+}
+
+.organization-table td {
+  padding: 17px 18px;
+  border-bottom: 1px solid #edf0ee;
+  font-size: 13px;
+  color: #53605a;
+  vertical-align: middle;
+}
+
+.organization-table tbody tr:hover {
+  background: #fbfcfb;
+}
+
+.organization-table td:first-child {
+  min-width: 190px;
+}
+
+.organization-table td:first-child strong {
+  display: block;
+  color: #26322c;
+  font-size: 14px;
+  margin-bottom: 4px;
+}
+
+.organization-table td:first-child span {
+  display: block;
+  color: #8a938e;
+  font-size: 12px;
+}
+
+.type-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 9px;
+  border-radius: 6px;
+  background: #edf4f0;
+  color: #32614e;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.4px;
+}
+
+.status-badge {
+  display: inline-flex;
+  padding: 6px 10px;
+  border-radius: 20px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.4px;
+}
+
+.status-badge.pending {
+  background: #fff4d9;
+  color: #946812;
+}
+
+.status-badge.approved {
+  background: #e5f4ec;
+  color: #26704d;
+}
+
+.status-badge.rejected {
+  background: #f8e9e9;
+  color: #9b4c4c;
+}
+
+.status-badge.blacklisted {
+  background: #eee8e8;
+  color: #754646;
+}
+
+.admin-actions {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  white-space: nowrap;
+}
+
+.admin-actions button {
+  border: 0;
+  border-radius: 7px;
+  padding: 7px 11px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.approve-button {
+  background: #e5f4ec;
+  color: #26704d;
+}
+
+.approve-button:hover {
+  background: #d8eee2;
+}
+
+.reject-button {
+  background: #f8e9e9;
+  color: #9b4c4c;
+}
+
+.reject-button:hover {
+  background: #f3dddd;
+}
+
+.blacklist-button {
+  background: #f1ebeb;
+  color: #814b4b;
+}
+
+.blacklist-button:hover {
+  background: #e9dfdf;
+}
+
+.restore-button {
+  background: #e5f4ec;
+  color: #26704d;
+}
+
+.restore-button:hover {
+  background: #d8eee2;
+}
+
+.no-action {
+  color: #a0a7a3;
+  font-size: 11px;
+}
+
+@media (max-width: 900px) {
+  .admin-header {
+    padding: 0 24px;
+  }
+
+  .admin-content {
+    width: calc(100% - 40px);
+  }
+
+  .admin-stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .admin-label {
+    display: none;
+  }
+}
+
+@media (max-width: 600px) {
+  .admin-header {
+    padding: 0 18px;
+  }
+
+  .admin-content {
+    width: calc(100% - 28px);
+    padding-top: 32px;
+  }
+
+  .admin-heading h1 {
+    font-size: 28px;
+  }
+
+  .admin-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-panel-heading {
+    padding: 19px;
+  }
+}

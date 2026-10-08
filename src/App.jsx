@@ -6,6 +6,7 @@ import Register from "./pages/Register";
 import DonorDashboard from "./pages/DonorDashboard";
 import AddFoodBatch from "./pages/AddFoodBatch";
 import NGODashboard from "./pages/NGODashboard";
+import AdminDashboard from "./pages/AdminDashboard";
 
 import "./App.css";
 
@@ -27,7 +28,7 @@ function App() {
     }
 
     if (role === "ADMIN") {
-      alert("Admin dashboard will be added next.");
+      setPage("admin-dashboard");
       return;
     }
 
@@ -84,6 +85,11 @@ function App() {
         <NGODashboard
           onLogout={handleLogout}
           ngoId={user?.ngoId}
+        />
+      )}
+      {page === "admin-dashboard" && (
+        <AdminDashboard
+          onLogout={handleLogout}
         />
       )}
 
