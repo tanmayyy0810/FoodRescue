@@ -675,6 +675,58 @@ app.get("/api/admin/organizations", async (req, res) => {
         }
     }
 });
+app.post("/api/ngo-requests/cancel", async (req, res) => {
+  let connection;
+
+  try {
+    const { requestId, ngoId } = req.body;
+
+    if (!requestId || !ngoId) {
+      return res.status(400).json({
+        message: "Request ID and NGO ID are required.",
+      });
+    }
+
+    // connection = await oracledb.getConnection(dbConfig);
+    connection = await getConnection();
+
+    await connection.execute(
+      `BEGIN
+         CANCEL_NGO_REQUEST(
+           :request_id,
+           :ngo_id
+         );
+       END;`,
+      {
+        request_id: Number(requestId),
+        ngo_id: Number(ngoId),
+      }
+    );
+
+    res.json({
+      message: "NGO request cancelled successfully.",
+      requestId: Number(requestId),
+      status: "CANCELLED",
+    });
+  } catch (error) {
+    console.error("Cancel NGO request error:", error);
+
+    if (error.errorNum === 20030 || error.errorNum === 20031) {
+      return res.status(400).json({
+        message: error.message,
+      });
+    }
+
+    res.status(500).json({
+      message: "Unable to cancel NGO request.",
+      error: error.message,
+    });
+  } finally {
+    if (connection) {
+      await connection.close();
+    }
+  }
+});
 app.post("/api/register", async (req, res) => {
     let connection;
 

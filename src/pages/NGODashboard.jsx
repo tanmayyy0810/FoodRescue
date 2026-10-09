@@ -17,6 +17,7 @@ function NGODashboard({ onLogout, ngoId }) {
 
     const [submitting, setSubmitting] = useState(false);
     const [formError, setFormError] = useState("");
+    const [cancellingRequestId, setCancellingRequestId] = useState(null);
 
     const loadData = async () => {
         if (!ngoId) {
@@ -175,7 +176,46 @@ function NGODashboard({ onLogout, ngoId }) {
             setSubmitting(false);
         }
     };
+    const handleCancelRequest = async (requestId) => {
+    const confirmed = window.confirm(
+        `Are you sure you want to cancel request #${requestId}?`
+    );
 
+    if (!confirmed) return;
+
+    try {
+        setCancellingRequestId(requestId);
+
+        const response = await fetch(
+            "http://localhost:5000/api/ngo-requests/cancel",
+            {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    requestId,
+                    ngoId
+                })
+            }
+        );
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(
+                data.message || "Failed to cancel request."
+            );
+        }
+
+        await loadData();
+    } catch (error) {
+        console.error("Request cancellation error:", error);
+        alert(error.message || "Unable to cancel request.");
+    } finally {
+        setCancellingRequestId(null);
+    }
+};
     const getStatusClass = (status) => {
         if (status === "PENDING") {
             return "ngo-status pending";
@@ -557,13 +597,24 @@ function NGODashboard({ onLogout, ngoId }) {
                                                     </span>
 
 
-                                                    <span
-                                                        className={getStatusClass(
-                                                            request[8]
-                                                        )}
-                                                    >
-                                                        {request[8]}
-                                                    </span>
+                                                    <div className="ngo-request-status-actions">
+    <span className={getStatusClass(request[8])}>
+        {request[8]}
+    </span>
+
+    {request[8] === "PENDING" && (
+        <button
+            type="button"
+            className="ngo-cancel-request-button"
+            disabled={cancellingRequestId === request[0]}
+            onClick={() => handleCancelRequest(request[0])}
+        >
+            {cancellingRequestId === request[0]
+                ? "Cancelling..."
+                : "Cancel"}
+        </button>
+    )}
+</div>
 
                                                 </div>
                                             ))
@@ -870,13 +921,24 @@ function NGODashboard({ onLogout, ngoId }) {
                                         </span>
 
 
-                                        <span
-                                            className={getStatusClass(
-                                                request[8]
-                                            )}
-                                        >
-                                            {request[8]}
-                                        </span>
+                                        <div className="ngo-request-status-actions">
+    <span className={getStatusClass(request[8])}>
+        {request[8]}
+    </span>
+
+    {request[8] === "PENDING" && (
+        <button
+            type="button"
+            className="ngo-cancel-request-button"
+            disabled={cancellingRequestId === request[0]}
+            onClick={() => handleCancelRequest(request[0])}
+        >
+            {cancellingRequestId === request[0]
+                ? "Cancelling..."
+                : "Cancel"}
+        </button>
+    )}
+</div>
 
                                     </div>
                                 ))

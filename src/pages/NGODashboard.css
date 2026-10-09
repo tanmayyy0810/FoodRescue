@@ -1007,3 +1007,52 @@
         padding-bottom: 20px;
     }
 }
+    
+    /* NGO request cancellation actions */
+
+.ngo-request-status-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: nowrap;
+}
+
+.ngo-request-status-actions .ngo-status {
+    flex-shrink: 0;
+}
+
+.ngo-request-status-actions .ngo-cancel-request-button {
+    appearance: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 28px;
+    padding: 5px 10px;
+    margin: 0;
+    border: 1px solid #e8c7c4;
+    border-radius: 4px;
+    background-color: #fff7f6;
+    color: #a33e38;
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.2;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.ngo-request-status-actions .ngo-cancel-request-button:hover:not(:disabled) {
+    background-color: #fbe9e7;
+    border-color: #dca6a1;
+}
+
+.ngo-request-status-actions .ngo-cancel-request-button:focus-visible {
+    outline: 2px solid #a33e38;
+    outline-offset: 2px;
+}
+
+.ngo-request-status-actions .ngo-cancel-request-button:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+}
