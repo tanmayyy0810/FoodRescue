@@ -19,8 +19,11 @@ function NGODashboard({ onLogout, ngoId }) {
     const [formError, setFormError] = useState("");
     const [cancellingRequestId, setCancellingRequestId] = useState(null);
 
+    // LOAD NGO REQUESTS AND AVAILABLE FOOD
+
     const loadData = async () => {
         if (!ngoId) {
+            setLoading(false);
             return;
         }
 
@@ -60,6 +63,8 @@ function NGODashboard({ onLogout, ngoId }) {
         loadData();
     }, [ngoId]);
 
+    // DATE AND GREETING
+
     const today = new Date();
 
     const formattedDate = today.toLocaleDateString("en-IN", {
@@ -82,6 +87,8 @@ function NGODashboard({ onLogout, ngoId }) {
             ? requests[0][1]
             : "Your Organisation";
 
+    // DASHBOARD STATISTICS
+
     const totalRequests = requests.length;
 
     const pendingRequests = requests.filter(
@@ -98,6 +105,8 @@ function NGODashboard({ onLogout, ngoId }) {
         (request) => request[8] === "COMPLETED"
     ).length;
 
+    // OPEN FOOD REQUEST FORM
+
     const handleRequestFood = (batch) => {
         setSelectedBatch(batch);
         setQuantity("");
@@ -106,6 +115,8 @@ function NGODashboard({ onLogout, ngoId }) {
         setFormError("");
         setShowRequestForm(true);
     };
+
+    // SUBMIT NEW FOOD REQUEST
 
     const handleSubmitRequest = async (event) => {
         event.preventDefault();
@@ -176,46 +187,52 @@ function NGODashboard({ onLogout, ngoId }) {
             setSubmitting(false);
         }
     };
+
+    // CANCEL NGO REQUEST
+
     const handleCancelRequest = async (requestId) => {
-    const confirmed = window.confirm(
-        `Are you sure you want to cancel request #${requestId}?`
-    );
-
-    if (!confirmed) return;
-
-    try {
-        setCancellingRequestId(requestId);
-
-        const response = await fetch(
-            "http://localhost:5000/api/ngo-requests/cancel",
-            {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({
-                    requestId,
-                    ngoId
-                })
-            }
+        const confirmed = window.confirm(
+            `Are you sure you want to cancel request #${requestId}?`
         );
 
-        const data = await response.json();
+        if (!confirmed) return;
 
-        if (!response.ok) {
-            throw new Error(
-                data.message || "Failed to cancel request."
+        try {
+            setCancellingRequestId(requestId);
+
+            const response = await fetch(
+                "http://localhost:5000/api/ngo-requests/cancel",
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        requestId,
+                        ngoId
+                    })
+                }
             );
-        }
 
-        await loadData();
-    } catch (error) {
-        console.error("Request cancellation error:", error);
-        alert(error.message || "Unable to cancel request.");
-    } finally {
-        setCancellingRequestId(null);
-    }
-};
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(
+                    data.message || "Failed to cancel request."
+                );
+            }
+
+            await loadData();
+        } catch (error) {
+            console.error("Request cancellation error:", error);
+            alert(error.message || "Unable to cancel request.");
+        } finally {
+            setCancellingRequestId(null);
+        }
+    };
+
+    // REQUEST STATUS STYLING
+
     const getStatusClass = (status) => {
         if (status === "PENDING") {
             return "ngo-status pending";
@@ -236,6 +253,147 @@ function NGODashboard({ onLogout, ngoId }) {
         return "ngo-status";
     };
 
+    // ALLOCATION PROGRESS CALCULATION
+
+    const getAllocationProgress = (request) => {
+        const requested = Number(request[4]) || 0;
+        const allocated = Number(request[6]) || 0;
+        const remaining = Math.max(0, requested - allocated);
+
+        let label = "Awaiting allocation";
+
+        if (requested > 0 && allocated >= requested) {
+            label = "Fully allocated";
+        } else if (allocated > 0) {
+            label = "Partially allocated";
+        }
+
+        if (request[8] === "CANCELLED") {
+            label = "Cancelled";
+        } else if (request[8] === "COMPLETED") {
+            label = "Completed";
+        }
+
+        return {
+            requested,
+            allocated,
+            remaining,
+            label,
+            percentage:
+                requested > 0
+                    ? Math.min(
+                        100,
+                        Math.round((allocated / requested) * 100)
+                    )
+                    : 0
+        };
+    };
+
+    // SHARED REQUEST ROW
+    // Used in Recent Requests and My Food Requests.
+    // This prevents duplicate progress displays.
+
+    const renderRequestRow = (request, showDate = false) => {
+        const progress = getAllocationProgress(request);
+
+        return (
+            <div
+                className="ngo-request-row"
+                key={request[3]}
+            >
+                <div className="ngo-food-name">
+                    <div className="ngo-food-code">
+                        {request[2]
+                            .split(" ")
+                            .map((word) => word[0])
+                            .join("")
+                            .slice(0, 2)
+                            .toUpperCase()}
+                    </div>
+
+                    <div>
+                        <strong>{request[2]}</strong>
+                        <span>Request #{request[0]}</span>
+                    </div>
+                </div>
+
+                {/* QUANTITY AND ALLOCATION PROGRESS */}
+
+                <div className="ngo-request-quantity-progress">
+                    <span>
+                        {request[4]} {request[5].toLowerCase()}
+                    </span>
+
+                    {progress.allocated > 0 && (
+                        <div className="ngo-allocation-progress">
+                            <span className="ngo-progress-label">
+                                {progress.label}
+                            </span>
+
+                            <span className="ngo-progress-details">
+                                {progress.allocated} allocated ·{" "}
+                                {progress.remaining} remaining
+                            </span>
+
+                            <div className="ngo-progress-track">
+                                <div
+                                    className="ngo-progress-fill"
+                                    style={{
+                                        width: `${progress.percentage}%`
+                                    }}
+                                />
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                {/* REQUIRED BY */}
+
+                <span>
+                    {showDate
+                        ? new Date(request[7]).toLocaleDateString(
+                            "en-IN",
+                            {
+                                day: "2-digit",
+                                month: "short",
+                                year: "numeric"
+                            }
+                        )
+                        : new Date(request[7]).toLocaleTimeString(
+                            [],
+                            {
+                                hour: "2-digit",
+                                minute: "2-digit"
+                            }
+                        )}
+                </span>
+
+                {/* STATUS AND CANCEL BUTTON */}
+
+                <div className="ngo-request-status-actions">
+                    <span className={getStatusClass(request[8])}>
+                        {request[8]}
+                    </span>
+
+                    {request[8] === "PENDING" && (
+                        <button
+                            type="button"
+                            className="ngo-cancel-request-button"
+                            disabled={cancellingRequestId === request[0]}
+                            onClick={() =>
+                                handleCancelRequest(request[0])
+                            }
+                        >
+                            {cancellingRequestId === request[0]
+                                ? "Cancelling..."
+                                : "Cancel"}
+                        </button>
+                    )}
+                </div>
+            </div>
+        );
+    };
+
     return (
         <div className="ngo-dashboard">
 
@@ -244,7 +402,6 @@ function NGODashboard({ onLogout, ngoId }) {
             <aside className="ngo-sidebar">
 
                 <div className="ngo-dashboard-brand">
-
                     <div className="ngo-dashboard-logo">
                         F
                     </div>
@@ -253,9 +410,7 @@ function NGODashboard({ onLogout, ngoId }) {
                         <strong>FoodRescue</strong>
                         <span>NGO Portal</span>
                     </div>
-
                 </div>
-
 
                 <nav className="ngo-dashboard-nav">
 
@@ -279,7 +434,6 @@ function NGODashboard({ onLogout, ngoId }) {
                         Dashboard
                     </button>
 
-
                     <button
                         className={`ngo-nav-item ${
                             activeSection === "requests"
@@ -295,7 +449,6 @@ function NGODashboard({ onLogout, ngoId }) {
                         </span>
                         Food Requests
                     </button>
-
 
                     <button
                         className={`ngo-nav-item ${
@@ -313,7 +466,6 @@ function NGODashboard({ onLogout, ngoId }) {
                         Available Food
                     </button>
 
-
                     <button
                         className="ngo-nav-item"
                         onClick={() =>
@@ -325,7 +477,6 @@ function NGODashboard({ onLogout, ngoId }) {
                         </span>
                         Allocations
                     </button>
-
 
                     <button
                         className="ngo-nav-item"
@@ -339,11 +490,9 @@ function NGODashboard({ onLogout, ngoId }) {
                         Deliveries
                     </button>
 
-
                     <p className="ngo-nav-label ngo-nav-label-spaced">
                         ACCOUNT
                     </p>
-
 
                     <button className="ngo-nav-item">
                         <span className="ngo-nav-icon">
@@ -351,7 +500,6 @@ function NGODashboard({ onLogout, ngoId }) {
                         </span>
                         Organization
                     </button>
-
 
                     <button className="ngo-nav-item">
                         <span className="ngo-nav-icon">
@@ -362,11 +510,9 @@ function NGODashboard({ onLogout, ngoId }) {
 
                 </nav>
 
-
                 <div className="ngo-sidebar-bottom">
 
                     <div className="ngo-user-mini">
-
                         <div className="ngo-user-avatar">
                             HF
                         </div>
@@ -375,9 +521,7 @@ function NGODashboard({ onLogout, ngoId }) {
                             <strong>{ngoName}</strong>
                             <span>NGO</span>
                         </div>
-
                     </div>
-
 
                     <button
                         className="ngo-logout-button"
@@ -387,9 +531,7 @@ function NGODashboard({ onLogout, ngoId }) {
                     </button>
 
                 </div>
-
             </aside>
-
 
             {/* MAIN CONTENT */}
 
@@ -398,7 +540,6 @@ function NGODashboard({ onLogout, ngoId }) {
                 <header className="ngo-dashboard-header">
 
                     <div>
-
                         <p className="ngo-dashboard-eyebrow">
                             NGO PORTAL
                         </p>
@@ -411,9 +552,7 @@ function NGODashboard({ onLogout, ngoId }) {
                             Here's what's happening with your food
                             requirements.
                         </p>
-
                     </div>
-
 
                     <div className="ngo-header-date">
                         <span>Today</span>
@@ -422,72 +561,35 @@ function NGODashboard({ onLogout, ngoId }) {
 
                 </header>
 
-
                 {/* STATISTICS */}
 
                 <section className="ngo-dashboard-stats">
 
                     <div className="ngo-stat-card">
-
                         <span>Total requests</span>
-
-                        <strong>
-                            {totalRequests}
-                        </strong>
-
-                        <small>
-                            food requests submitted
-                        </small>
-
+                        <strong>{totalRequests}</strong>
+                        <small>food requests submitted</small>
                     </div>
 
-
                     <div className="ngo-stat-card">
-
                         <span>Pending</span>
-
-                        <strong>
-                            {pendingRequests}
-                        </strong>
-
-                        <small>
-                            awaiting approval
-                        </small>
-
+                        <strong>{pendingRequests}</strong>
+                        <small>awaiting approval</small>
                     </div>
-
 
                     <div className="ngo-stat-card">
-
                         <span>Approved</span>
-
-                        <strong>
-                            {approvedRequests}
-                        </strong>
-
-                        <small>
-                            accepted or allocated
-                        </small>
-
+                        <strong>{approvedRequests}</strong>
+                        <small>accepted or allocated</small>
                     </div>
-
 
                     <div className="ngo-stat-card warning">
-
                         <span>Completed</span>
-
-                        <strong>
-                            {completedRequests}
-                        </strong>
-
-                        <small>
-                            food received
-                        </small>
-
+                        <strong>{completedRequests}</strong>
+                        <small>food received</small>
                     </div>
 
                 </section>
-
 
                 {/* DASHBOARD VIEW */}
 
@@ -500,15 +602,11 @@ function NGODashboard({ onLogout, ngoId }) {
                             <div className="ngo-dashboard-card ngo-requests-card">
 
                                 <div className="ngo-card-heading">
-
                                     <div>
                                         <span>
                                             FOOD REQUIREMENTS
                                         </span>
-
-                                        <h2>
-                                            Recent requests
-                                        </h2>
+                                        <h2>Recent requests</h2>
                                     </div>
 
                                     <button
@@ -519,9 +617,7 @@ function NGODashboard({ onLogout, ngoId }) {
                                     >
                                         View all
                                     </button>
-
                                 </div>
-
 
                                 <div className="ngo-request-table">
 
@@ -531,7 +627,6 @@ function NGODashboard({ onLogout, ngoId }) {
                                         <span>REQUIRED BY</span>
                                         <span>STATUS</span>
                                     </div>
-
 
                                     {loading ? (
                                         <div className="ngo-table-empty">
@@ -544,111 +639,31 @@ function NGODashboard({ onLogout, ngoId }) {
                                     ) : (
                                         requests
                                             .slice(0, 5)
-                                            .map((request) => (
-                                                <div
-                                                    className="ngo-request-row"
-                                                    key={request[3]}
-                                                >
-
-                                                    <div className="ngo-food-name">
-
-                                                        <div className="ngo-food-code">
-                                                            {request[2]
-                                                                .split(" ")
-                                                                .map(
-                                                                    (word) =>
-                                                                        word[0]
-                                                                )
-                                                                .join("")
-                                                                .slice(0, 2)
-                                                                .toUpperCase()}
-                                                        </div>
-
-                                                        <div>
-                                                            <strong>
-                                                                {request[2]}
-                                                            </strong>
-
-                                                            <span>
-                                                                Request #
-                                                                {request[0]}
-                                                            </span>
-                                                        </div>
-
-                                                    </div>
-
-
-                                                    <span>
-                                                        {request[4]}{" "}
-                                                        {request[5].toLowerCase()}
-                                                    </span>
-
-
-                                                    <span>
-                                                        {new Date(
-                                                            request[7]
-                                                        ).toLocaleTimeString(
-                                                            [],
-                                                            {
-                                                                hour: "2-digit",
-                                                                minute: "2-digit"
-                                                            }
-                                                        )}
-                                                    </span>
-
-
-                                                    <div className="ngo-request-status-actions">
-    <span className={getStatusClass(request[8])}>
-        {request[8]}
-    </span>
-
-    {request[8] === "PENDING" && (
-        <button
-            type="button"
-            className="ngo-cancel-request-button"
-            disabled={cancellingRequestId === request[0]}
-            onClick={() => handleCancelRequest(request[0])}
-        >
-            {cancellingRequestId === request[0]
-                ? "Cancelling..."
-                : "Cancel"}
-        </button>
-    )}
-</div>
-
-                                                </div>
-                                            ))
+                                            .map((request) =>
+                                                renderRequestRow(request)
+                                            )
                                     )}
 
                                 </div>
-
                             </div>
-
 
                             {/* REQUEST FOOD */}
 
                             <div className="ngo-dashboard-card ngo-request-food-card">
 
                                 <div className="ngo-card-heading">
-
                                     <div>
                                         <span>
                                             FOOD REQUIREMENT
                                         </span>
-
-                                        <h2>
-                                            Request food
-                                        </h2>
+                                        <h2>Request food</h2>
                                     </div>
-
                                 </div>
-
 
                                 <p>
                                     Browse available surplus food and
                                     submit a request for your organisation.
                                 </p>
-
 
                                 <button
                                     type="button"
@@ -660,62 +675,36 @@ function NGODashboard({ onLogout, ngoId }) {
                                     + Request food
                                 </button>
 
-
                                 <div className="ngo-quick-info">
 
                                     <div>
-                                        <strong>
-                                            Availability
-                                        </strong>
-
-                                        <span>
-                                            Live donor inventory
-                                        </span>
+                                        <strong>Availability</strong>
+                                        <span>Live donor inventory</span>
                                     </div>
 
-
                                     <div>
-                                        <strong>
-                                            Approval
-                                        </strong>
-
-                                        <span>
-                                            Tracked by status
-                                        </span>
+                                        <strong>Approval</strong>
+                                        <span>Tracked by status</span>
                                     </div>
 
-
                                     <div>
-                                        <strong>
-                                            Distribution
-                                        </strong>
-
-                                        <span>
-                                            Recorded in system
-                                        </span>
+                                        <strong>Distribution</strong>
+                                        <span>Recorded in system</span>
                                     </div>
 
                                 </div>
-
                             </div>
 
                         </section>
 
-
-                        {/* AVAILABLE FOOD */}
+                        {/* AVAILABLE FOOD PREVIEW */}
 
                         <section className="ngo-dashboard-card ngo-available-card">
 
                             <div className="ngo-card-heading">
-
                                 <div>
-                                    <span>
-                                        DONOR INVENTORY
-                                    </span>
-
-                                    <h2>
-                                        Available food
-                                    </h2>
+                                    <span>DONOR INVENTORY</span>
+                                    <h2>Available food</h2>
                                 </div>
 
                                 <button
@@ -726,9 +715,7 @@ function NGODashboard({ onLogout, ngoId }) {
                                 >
                                     View all
                                 </button>
-
                             </div>
-
 
                             <div className="ngo-available-table">
 
@@ -739,7 +726,6 @@ function NGODashboard({ onLogout, ngoId }) {
                                     <span>EXPIRY</span>
                                     <span></span>
                                 </div>
-
 
                                 {loading ? (
                                     <div className="ngo-table-empty">
@@ -757,15 +743,13 @@ function NGODashboard({ onLogout, ngoId }) {
                                                 className="ngo-available-row"
                                                 key={batch[0]}
                                             >
-
                                                 <div className="ngo-food-name">
 
                                                     <div className="ngo-food-code">
                                                         {batch[3]
                                                             .split(" ")
                                                             .map(
-                                                                (word) =>
-                                                                    word[0]
+                                                                (word) => word[0]
                                                             )
                                                             .join("")
                                                             .slice(0, 2)
@@ -781,20 +765,16 @@ function NGODashboard({ onLogout, ngoId }) {
                                                             Batch #{batch[0]}
                                                         </span>
                                                     </div>
-
                                                 </div>
-
 
                                                 <span>
                                                     {batch[2]}
                                                 </span>
 
-
                                                 <span>
                                                     {batch[11]}{" "}
                                                     {batch[6].toLowerCase()}
                                                 </span>
-
 
                                                 <span>
                                                     {new Date(
@@ -808,7 +788,6 @@ function NGODashboard({ onLogout, ngoId }) {
                                                     )}
                                                 </span>
 
-
                                                 <button
                                                     className="ngo-small-request-button"
                                                     onClick={() =>
@@ -817,37 +796,28 @@ function NGODashboard({ onLogout, ngoId }) {
                                                 >
                                                     Request
                                                 </button>
-
                                             </div>
                                         ))
                                 )}
 
                             </div>
-
                         </section>
                     </>
                 )}
 
-
-                {/* REQUESTS VIEW */}
+                {/* MY FOOD REQUESTS VIEW */}
 
                 {activeSection === "requests" && (
                     <section className="ngo-dashboard-card ngo-full-section">
 
                         <div className="ngo-card-heading">
-
                             <div>
                                 <span>
                                     FOOD REQUIREMENTS
                                 </span>
-
-                                <h2>
-                                    My food requests
-                                </h2>
+                                <h2>My food requests</h2>
                             </div>
-
                         </div>
-
 
                         <div className="ngo-request-table">
 
@@ -858,7 +828,6 @@ function NGODashboard({ onLogout, ngoId }) {
                                 <span>STATUS</span>
                             </div>
 
-
                             {loading ? (
                                 <div className="ngo-table-empty">
                                     Loading requests...
@@ -868,87 +837,14 @@ function NGODashboard({ onLogout, ngoId }) {
                                     No food requests yet.
                                 </div>
                             ) : (
-                                requests.map((request) => (
-                                    <div
-                                        className="ngo-request-row"
-                                        key={request[3]}
-                                    >
-
-                                        <div className="ngo-food-name">
-
-                                            <div className="ngo-food-code">
-                                                {request[2]
-                                                    .split(" ")
-                                                    .map(
-                                                        (word) =>
-                                                            word[0]
-                                                    )
-                                                    .join("")
-                                                    .slice(0, 2)
-                                                    .toUpperCase()}
-                                            </div>
-
-                                            <div>
-                                                <strong>
-                                                    {request[2]}
-                                                </strong>
-
-                                                <span>
-                                                    Request #{request[0]}
-                                                </span>
-                                            </div>
-
-                                        </div>
-
-
-                                        <span>
-                                            {request[4]}{" "}
-                                            {request[5].toLowerCase()}
-                                        </span>
-
-
-                                        <span>
-                                            {new Date(
-                                                request[7]
-                                            ).toLocaleDateString(
-                                                "en-IN",
-                                                {
-                                                    day: "2-digit",
-                                                    month: "short",
-                                                    year: "numeric"
-                                                }
-                                            )}
-                                        </span>
-
-
-                                        <div className="ngo-request-status-actions">
-    <span className={getStatusClass(request[8])}>
-        {request[8]}
-    </span>
-
-    {request[8] === "PENDING" && (
-        <button
-            type="button"
-            className="ngo-cancel-request-button"
-            disabled={cancellingRequestId === request[0]}
-            onClick={() => handleCancelRequest(request[0])}
-        >
-            {cancellingRequestId === request[0]
-                ? "Cancelling..."
-                : "Cancel"}
-        </button>
-    )}
-</div>
-
-                                    </div>
-                                ))
+                                requests.map((request) =>
+                                    renderRequestRow(request, true)
+                                )
                             )}
 
                         </div>
-
                     </section>
                 )}
-
 
                 {/* AVAILABLE FOOD VIEW */}
 
@@ -956,19 +852,11 @@ function NGODashboard({ onLogout, ngoId }) {
                     <section className="ngo-dashboard-card ngo-full-section">
 
                         <div className="ngo-card-heading">
-
                             <div>
-                                <span>
-                                    DONOR INVENTORY
-                                </span>
-
-                                <h2>
-                                    Available food
-                                </h2>
+                                <span>DONOR INVENTORY</span>
+                                <h2>Available food</h2>
                             </div>
-
                         </div>
-
 
                         <div className="ngo-food-grid">
 
@@ -988,55 +876,30 @@ function NGODashboard({ onLogout, ngoId }) {
                                     >
 
                                         <div className="ngo-food-card-top">
-
-                                            <span>
-                                                {batch[4]}
-                                            </span>
-
+                                            <span>{batch[4]}</span>
                                             <span className="ngo-food-status">
                                                 AVAILABLE
                                             </span>
-
                                         </div>
 
-
-                                        <h3>
-                                            {batch[3]}
-                                        </h3>
-
+                                        <h3>{batch[3]}</h3>
 
                                         <div className="ngo-food-quantity">
-
-                                            <strong>
-                                                {batch[11]}
-                                            </strong>
-
+                                            <strong>{batch[11]}</strong>
                                             <span>
-                                                {batch[6].toLowerCase()}
-                                                {" "}available
+                                                {batch[6].toLowerCase()} available
                                             </span>
-
                                         </div>
-
 
                                         <div className="ngo-food-info">
 
                                             <div>
-                                                <span>
-                                                    DONOR
-                                                </span>
-
-                                                <strong>
-                                                    {batch[2]}
-                                                </strong>
+                                                <span>DONOR</span>
+                                                <strong>{batch[2]}</strong>
                                             </div>
 
-
                                             <div>
-                                                <span>
-                                                    EXPIRES
-                                                </span>
-
+                                                <span>EXPIRES</span>
                                                 <strong>
                                                     {new Date(
                                                         batch[8]
@@ -1045,7 +908,6 @@ function NGODashboard({ onLogout, ngoId }) {
                                             </div>
 
                                         </div>
-
 
                                         <button
                                             className="ngo-primary-button"
@@ -1061,10 +923,8 @@ function NGODashboard({ onLogout, ngoId }) {
                             )}
 
                         </div>
-
                     </section>
                 )}
-
 
                 {/* REQUEST MODAL */}
 
@@ -1076,10 +936,7 @@ function NGODashboard({ onLogout, ngoId }) {
                             <div className="ngo-request-modal-header">
 
                                 <div>
-
-                                    <span>
-                                        FOOD REQUEST
-                                    </span>
+                                    <span>FOOD REQUEST</span>
 
                                     <h2>
                                         Request {selectedBatch[3]}
@@ -1090,9 +947,7 @@ function NGODashboard({ onLogout, ngoId }) {
                                         {selectedBatch[11]}{" "}
                                         {selectedBatch[6]}
                                     </p>
-
                                 </div>
-
 
                                 <button
                                     type="button"
@@ -1102,17 +957,12 @@ function NGODashboard({ onLogout, ngoId }) {
                                 >
                                     ×
                                 </button>
-
                             </div>
-
 
                             <form onSubmit={handleSubmitRequest}>
 
                                 <div className="ngo-input-group">
-
-                                    <label>
-                                        Quantity
-                                    </label>
+                                    <label>Quantity</label>
 
                                     <input
                                         type="number"
@@ -1120,61 +970,42 @@ function NGODashboard({ onLogout, ngoId }) {
                                         max={selectedBatch[11]}
                                         value={quantity}
                                         onChange={(event) =>
-                                            setQuantity(
-                                                event.target.value
-                                            )
+                                            setQuantity(event.target.value)
                                         }
                                         placeholder={`Enter quantity in ${selectedBatch[6]}`}
                                     />
-
                                 </div>
 
-
                                 <div className="ngo-input-group">
-
-                                    <label>
-                                        Required By
-                                    </label>
+                                    <label>Required By</label>
 
                                     <input
                                         type="datetime-local"
                                         value={requiredBy}
                                         onChange={(event) =>
-                                            setRequiredBy(
-                                                event.target.value
-                                            )
+                                            setRequiredBy(event.target.value)
                                         }
                                     />
-
                                 </div>
 
-
                                 <div className="ngo-input-group">
-
-                                    <label>
-                                        Notes
-                                    </label>
+                                    <label>Notes</label>
 
                                     <textarea
                                         value={notes}
                                         onChange={(event) =>
-                                            setNotes(
-                                                event.target.value
-                                            )
+                                            setNotes(event.target.value)
                                         }
                                         placeholder="Optional request details"
                                         rows="3"
                                     />
-
                                 </div>
-
 
                                 {formError && (
                                     <div className="ngo-form-error">
                                         {formError}
                                     </div>
                                 )}
-
 
                                 <div className="ngo-request-modal-actions">
 
@@ -1186,7 +1017,6 @@ function NGODashboard({ onLogout, ngoId }) {
                                     >
                                         Cancel
                                     </button>
-
 
                                     <button
                                         type="submit"
@@ -1200,24 +1030,22 @@ function NGODashboard({ onLogout, ngoId }) {
                                 </div>
 
                             </form>
-
                         </div>
-
                     </div>
                 )}
+
+                {/* FOOTER */}
 
                 <footer className="ngo-dashboard-footer">
                     <span>
                         FoodRescue Management System
                     </span>
-
                     <span>
                         NGO Portal
                     </span>
                 </footer>
 
             </main>
-
         </div>
     );
 }

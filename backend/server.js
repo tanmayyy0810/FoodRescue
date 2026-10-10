@@ -45,7 +45,7 @@ app.get("/api/food-batches", async (req, res) => {
         connection = await getConnection();
 
         const result = await connection.execute(
-    `
+            `
     SELECT
         fb.batch_id,
         fb.item_id,
@@ -71,9 +71,9 @@ app.get("/api/food-batches", async (req, res) => {
       AND (:donorId IS NULL OR fb.donor_id = :donorId)
     ORDER BY fb.expiry_time
 `,
-    {
-        donorId: donorId ? Number(donorId) : null
-    });
+            {
+                donorId: donorId ? Number(donorId) : null
+            });
 
         res.json(result.rows);
 
@@ -332,43 +332,76 @@ app.post("/api/allocations", async (req, res) => {
 
     try {
         const {
-            allocationId,
+            acceptanceId,
             requestItemId,
             batchId,
             allocatedQuantity
-        } = req.body;
+        } = req.body || {};
+
+        const acceptance = Number(acceptanceId);
+        const requestItem = Number(requestItemId);
+        const batch = Number(batchId);
+        const quantity = Number(allocatedQuantity);
+
+        if (
+            !Number.isInteger(acceptance) || acceptance <= 0 ||
+            !Number.isInteger(requestItem) || requestItem <= 0 ||
+            !Number.isInteger(batch) || batch <= 0 ||
+            !Number.isFinite(quantity) || quantity <= 0
+        ) {
+            return res.status(400).json({
+                message: "Valid acceptance ID, request item ID, batch ID and positive allocation quantity are required."
+            });
+        }
 
         connection = await getConnection();
 
-        await connection.execute(
-            `
-            BEGIN
+        const result = await connection.execute(
+            `DECLARE
+                v_allocation_id NUMBER;
+             BEGIN
+                v_allocation_id := SEQ_ALLOCATION.NEXTVAL;
+
                 FOODRESCUE_PKG.ALLOCATE_FOOD(
-                    :allocationId,
+                    v_allocation_id,
                     :requestItemId,
                     :batchId,
-                    :allocatedQuantity
+                    :allocatedQuantity,
+                    :acceptanceId
                 );
-            END;
-            `,
+
+                :allocationId := v_allocation_id;
+             END;`,
             {
-                allocationId,
-                requestItemId,
-                batchId,
-                allocatedQuantity
+                requestItemId: requestItem,
+                batchId: batch,
+                allocatedQuantity: quantity,
+                acceptanceId: acceptance,
+                allocationId: {
+                    dir: require("oracledb").BIND_OUT,
+                    type: require("oracledb").NUMBER
+                }
             }
         );
 
         res.status(201).json({
-            message: "Food allocated successfully",
-            allocationId
+            message: "Food allocated successfully.",
+            allocationId: result.outBinds.allocationId,
+            acceptanceId: acceptance,
+            allocatedQuantity: quantity
         });
 
     } catch (error) {
         console.error("Food allocation error:", error);
 
-        res.status(400).json({
-            message: "Failed to allocate food",
+        if (error.errorNum >= 20010 && error.errorNum <= 20023) {
+            return res.status(400).json({
+                message: error.message
+            });
+        }
+
+        res.status(500).json({
+            message: "Failed to allocate food.",
             error: error.message
         });
 
@@ -676,56 +709,56 @@ app.get("/api/admin/organizations", async (req, res) => {
     }
 });
 app.post("/api/ngo-requests/cancel", async (req, res) => {
-  let connection;
+    let connection;
 
-  try {
-    const { requestId, ngoId } = req.body;
+    try {
+        const { requestId, ngoId } = req.body;
 
-    if (!requestId || !ngoId) {
-      return res.status(400).json({
-        message: "Request ID and NGO ID are required.",
-      });
-    }
+        if (!requestId || !ngoId) {
+            return res.status(400).json({
+                message: "Request ID and NGO ID are required.",
+            });
+        }
 
-    // connection = await oracledb.getConnection(dbConfig);
-    connection = await getConnection();
+        // connection = await oracledb.getConnection(dbConfig);
+        connection = await getConnection();
 
-    await connection.execute(
-      `BEGIN
+        await connection.execute(
+            `BEGIN
          CANCEL_NGO_REQUEST(
            :request_id,
            :ngo_id
          );
        END;`,
-      {
-        request_id: Number(requestId),
-        ngo_id: Number(ngoId),
-      }
-    );
+            {
+                request_id: Number(requestId),
+                ngo_id: Number(ngoId),
+            }
+        );
 
-    res.json({
-      message: "NGO request cancelled successfully.",
-      requestId: Number(requestId),
-      status: "CANCELLED",
-    });
-  } catch (error) {
-    console.error("Cancel NGO request error:", error);
+        res.json({
+            message: "NGO request cancelled successfully.",
+            requestId: Number(requestId),
+            status: "CANCELLED",
+        });
+    } catch (error) {
+        console.error("Cancel NGO request error:", error);
 
-    if (error.errorNum === 20030 || error.errorNum === 20031) {
-      return res.status(400).json({
-        message: error.message,
-      });
+        if (error.errorNum === 20030 || error.errorNum === 20031) {
+            return res.status(400).json({
+                message: error.message,
+            });
+        }
+
+        res.status(500).json({
+            message: "Unable to cancel NGO request.",
+            error: error.message,
+        });
+    } finally {
+        if (connection) {
+            await connection.close();
+        }
     }
-
-    res.status(500).json({
-      message: "Unable to cancel NGO request.",
-      error: error.message,
-    });
-  } finally {
-    if (connection) {
-      await connection.close();
-    }
-  }
 });
 app.post("/api/register", async (req, res) => {
     let connection;
@@ -1234,86 +1267,101 @@ app.get("/api/donors/:donorId/matching-requests", async (req, res) => {
         connection = await getConnection();
 
         const result = await connection.execute(
-            `
-            WITH request_remaining AS (
-                SELECT
-                    ri.request_item_id,
-                    ri.request_id,
-                    ri.item_id,
-                    ri.unit,
-                    ri.requested_quantity,
-                    NVL(ri.allocated_quantity, 0) AS allocated_quantity,
+    `
+    WITH request_remaining AS (
+        SELECT
+            ri.request_item_id,
+            ri.request_id,
+            ri.item_id,
+            ri.unit,
+            ri.requested_quantity,
+            NVL(ri.allocated_quantity, 0) AS allocated_quantity,
+            NVL((
+                SELECT SUM(
+                    da.accepted_quantity -
                     NVL((
-                        SELECT SUM(da.accepted_quantity)
-                        FROM DONOR_ACCEPTANCE da
-                        WHERE da.request_item_id = ri.request_item_id
-                          AND da.status = 'ACCEPTED'
-                    ), 0) AS accepted_quantity
-                FROM REQUEST_ITEM ri
-                JOIN NGO_REQUEST nr
-                    ON nr.request_id = ri.request_id
-                WHERE nr.status = 'PENDING'
-            ),
-            donor_batches AS (
-                SELECT
-                    fb.batch_id,
-                    fb.item_id,
-                    fb.unit,
-                    fb.expiry_time,
-                    fb.quantity
-                        - NVL((
+                        SELECT SUM(a.allocated_quantity)
+                        FROM ALLOCATION a
+                        WHERE a.acceptance_id = da.acceptance_id
+                          AND a.status <> 'CANCELLED'
+                    ), 0)
+                )
+                FROM DONOR_ACCEPTANCE da
+                WHERE da.request_item_id = ri.request_item_id
+                  AND da.status = 'ACCEPTED'
+            ), 0) AS accepted_quantity
+        FROM REQUEST_ITEM ri
+        JOIN NGO_REQUEST nr
+            ON nr.request_id = ri.request_id
+        WHERE nr.status = 'PENDING'
+    ),
+    donor_batches AS (
+        SELECT
+            fb.batch_id,
+            fb.item_id,
+            fb.unit,
+            fb.expiry_time,
+            fb.quantity
+                - NVL((
+                    SELECT SUM(a.allocated_quantity)
+                    FROM ALLOCATION a
+                    WHERE a.batch_id = fb.batch_id
+                      AND a.status <> 'CANCELLED'
+                ), 0)
+                - NVL((
+                    SELECT SUM(
+                        da.accepted_quantity -
+                        NVL((
                             SELECT SUM(a.allocated_quantity)
                             FROM ALLOCATION a
-                            WHERE a.batch_id = fb.batch_id
+                            WHERE a.acceptance_id = da.acceptance_id
                               AND a.status <> 'CANCELLED'
                         ), 0)
-                        - NVL((
-                            SELECT SUM(da.accepted_quantity)
-                            FROM DONOR_ACCEPTANCE da
-                            WHERE da.batch_id = fb.batch_id
-                              AND da.status = 'ACCEPTED'
-                        ), 0) AS available_quantity
-                FROM FOOD_BATCH fb
-                WHERE fb.donor_id = :donorId
-                  AND fb.status = 'AVAILABLE'
-                  AND fb.expiry_time > SYSTIMESTAMP
-            )
-            SELECT
-                rr.request_id,
-                rr.request_item_id,
-                n.ngo_name,
-                fi.item_name,
-                rr.item_id,
-                rr.unit,
-                rr.requested_quantity,
-                rr.allocated_quantity,
-                rr.accepted_quantity,
-                rr.requested_quantity
-                    - rr.allocated_quantity
-                    - rr.accepted_quantity AS remaining_request_quantity,
-                db.batch_id,
-                db.available_quantity AS batch_available_quantity,
-                db.expiry_time,
-                nr.required_by
-            FROM request_remaining rr
-            JOIN NGO_REQUEST nr
-                ON nr.request_id = rr.request_id
-            JOIN NGO n
-                ON n.ngo_id = nr.ngo_id
-            JOIN FOOD_ITEM fi
-                ON fi.item_id = rr.item_id
-            JOIN donor_batches db
-                ON db.item_id = rr.item_id
-               AND db.unit = rr.unit
-            WHERE rr.requested_quantity
-                    - rr.allocated_quantity
-                    - rr.accepted_quantity > 0
-              AND db.available_quantity > 0
-            ORDER BY nr.required_by, db.expiry_time
-            `,
-            { donorId }
-        );
-
+                    )
+                    FROM DONOR_ACCEPTANCE da
+                    WHERE da.batch_id = fb.batch_id
+                      AND da.status = 'ACCEPTED'
+                ), 0) AS available_quantity
+        FROM FOOD_BATCH fb
+        WHERE fb.donor_id = :donorId
+          AND fb.status = 'AVAILABLE'
+          AND fb.expiry_time > SYSTIMESTAMP
+    )
+    SELECT
+        rr.request_id,
+        rr.request_item_id,
+        n.ngo_name,
+        fi.item_name,
+        rr.item_id,
+        rr.unit,
+        rr.requested_quantity,
+        rr.allocated_quantity,
+        rr.accepted_quantity,
+        rr.requested_quantity
+            - rr.allocated_quantity
+            - rr.accepted_quantity AS remaining_request_quantity,
+        db.batch_id,
+        db.available_quantity AS batch_available_quantity,
+        db.expiry_time,
+        nr.required_by
+    FROM request_remaining rr
+    JOIN NGO_REQUEST nr
+        ON nr.request_id = rr.request_id
+    JOIN NGO n
+        ON n.ngo_id = nr.ngo_id
+    JOIN FOOD_ITEM fi
+        ON fi.item_id = rr.item_id
+    JOIN donor_batches db
+        ON db.item_id = rr.item_id
+       AND db.unit = rr.unit
+    WHERE rr.requested_quantity
+            - rr.allocated_quantity
+            - rr.accepted_quantity > 0
+      AND db.available_quantity > 0
+    ORDER BY nr.required_by, db.expiry_time
+    `,
+    { donorId }
+);
         const requests = result.rows.map((row) => ({
             requestId: row[0],
             requestItemId: row[1],
@@ -1407,6 +1455,92 @@ app.get("/api/donors/:donorId/accepted-requests", async (req, res) => {
 
         res.status(500).json({
             message: "Failed to fetch accepted requests",
+            error: error.message
+        });
+
+    } finally {
+        if (connection) {
+            await connection.close();
+        }
+    }
+});
+// Admin: list donor acceptances awaiting allocation
+app.get("/api/admin/pending-allocations", async (req, res) => {
+    let connection;
+
+    try {
+        connection = await getConnection();
+
+        const result = await connection.execute(`
+            SELECT
+                da.acceptance_id,
+                nr.request_id,
+                ri.request_item_id,
+                n.ngo_name,
+                d.donor_name,
+                fi.item_name,
+                da.batch_id,
+                da.accepted_quantity,
+                NVL((
+                    SELECT SUM(a.allocated_quantity)
+                    FROM ALLOCATION a
+                    WHERE a.acceptance_id = da.acceptance_id
+                      AND a.status <> 'CANCELLED'
+                ), 0) AS allocated_quantity,
+                da.accepted_quantity - NVL((
+                    SELECT SUM(a.allocated_quantity)
+                    FROM ALLOCATION a
+                    WHERE a.acceptance_id = da.acceptance_id
+                      AND a.status <> 'CANCELLED'
+                ), 0) AS remaining_quantity,
+                ri.unit,
+                fb.expiry_time
+            FROM DONOR_ACCEPTANCE da
+            JOIN REQUEST_ITEM ri
+                ON ri.request_item_id = da.request_item_id
+            JOIN NGO_REQUEST nr
+                ON nr.request_id = ri.request_id
+            JOIN NGO n
+                ON n.ngo_id = nr.ngo_id
+            JOIN DONOR d
+                ON d.donor_id = da.donor_id
+            JOIN FOOD_ITEM fi
+                ON fi.item_id = ri.item_id
+            JOIN FOOD_BATCH fb
+                ON fb.batch_id = da.batch_id
+            WHERE da.status = 'ACCEPTED'
+              AND nr.status IN ('PENDING', 'APPROVED')
+              AND fb.status = 'AVAILABLE'
+              AND fb.expiry_time > SYSTIMESTAMP
+              AND da.accepted_quantity > NVL((
+                  SELECT SUM(a.allocated_quantity)
+                  FROM ALLOCATION a
+                  WHERE a.acceptance_id = da.acceptance_id
+                    AND a.status <> 'CANCELLED'
+              ), 0)
+            ORDER BY fb.expiry_time, da.acceptance_date
+        `);
+
+        res.json(result.rows.map((row) => ({
+            acceptanceId: row[0],
+            requestId: row[1],
+            requestItemId: row[2],
+            ngoName: row[3],
+            donorName: row[4],
+            itemName: row[5],
+            batchId: row[6],
+            acceptedQuantity: row[7],
+            allocatedQuantity: row[8],
+            remainingQuantity: row[9],
+            unit: row[10],
+            expiryTime: row[11]
+        })));
+
+    } catch (error) {
+        console.error("Pending allocations error:", error);
+
+        res.status(500).json({
+            message: "Failed to fetch pending allocations",
             error: error.message
         });
 

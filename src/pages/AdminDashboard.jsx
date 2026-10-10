@@ -9,6 +9,13 @@ function AdminDashboard({ onLogout }) {
 
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
+  const [pendingAllocations, setPendingAllocations] = useState([]);
+  const [allocationsLoading, setAllocationsLoading] = useState(true);
+  const [allocationsError, setAllocationsError] = useState("");
+  const [allocationQuantities, setAllocationQuantities] = useState({});
+  const [allocatingId, setAllocatingId] = useState(null);
+  const [allocationSuccess, setAllocationSuccess] = useState("");
+  const [allocationActionError, setAllocationActionError] = useState("");
 
   const fetchOrganizations = async () => {
     try {
@@ -36,6 +43,36 @@ function AdminDashboard({ onLogout }) {
 
   useEffect(() => {
     fetchOrganizations();
+  }, []);
+  useEffect(() => {
+    const fetchPendingAllocations = async () => {
+      try {
+        setAllocationsLoading(true);
+        setAllocationsError("");
+
+        const response = await fetch(
+          "http://localhost:5000/api/admin/pending-allocations"
+        );
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(
+            data.message || "Failed to load pending allocations"
+          );
+        }
+
+        setPendingAllocations(data);
+
+      } catch (error) {
+        console.error("Pending allocations error:", error);
+        setAllocationsError(error.message);
+      } finally {
+        setAllocationsLoading(false);
+      }
+    };
+
+    fetchPendingAllocations();
   }, []);
 
   const handleAction = async (
@@ -84,6 +121,82 @@ function AdminDashboard({ onLogout }) {
     } catch (error) {
       console.error("Admin action error:", error);
       setError(error.message || "Unable to complete action.");
+    }
+  };
+  const handleAllocateFood = async (allocation) => {
+    const quantity = Number(
+      allocationQuantities[allocation.acceptanceId]
+    );
+
+    setAllocationSuccess("");
+    setAllocationActionError("");
+
+    if (
+      !Number.isFinite(quantity) ||
+      quantity <= 0 ||
+      quantity > allocation.remainingQuantity
+    ) {
+      setAllocationActionError(
+        `Enter a quantity greater than 0 and up to ${allocation.remainingQuantity} ${allocation.unit.toLowerCase()}.`
+      );
+      return;
+    }
+
+    try {
+      setAllocatingId(allocation.acceptanceId);
+
+      const response = await fetch(
+        "http://localhost:5000/api/allocations",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            acceptanceId: allocation.acceptanceId,
+            requestItemId: allocation.requestItemId,
+            batchId: allocation.batchId,
+            allocatedQuantity: quantity
+          })
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.message || data.error || "Failed to allocate food"
+        );
+      }
+
+      setAllocationSuccess(
+        `Successfully allocated ${quantity} ${allocation.unit.toLowerCase()} to ${allocation.ngoName}.`
+      );
+
+      setAllocationQuantities((previous) => ({
+        ...previous,
+        [allocation.acceptanceId]: ""
+      }));
+
+      const refreshResponse = await fetch(
+        "http://localhost:5000/api/admin/pending-allocations",
+        { cache: "no-store" }
+      );
+
+      if (!refreshResponse.ok) {
+        throw new Error(
+          "Allocation succeeded, but refreshing the list failed."
+        );
+      }
+
+      const refreshedData = await refreshResponse.json();
+      setPendingAllocations(refreshedData);
+
+    } catch (error) {
+      console.error("Admin allocation error:", error);
+      setAllocationActionError(error.message);
+    } finally {
+      setAllocatingId(null);
     }
   };
 
@@ -375,6 +488,117 @@ function AdminDashboard({ onLogout }) {
             </div>
           )}
 
+        </section>
+        {/* PENDING FOOD ALLOCATIONS */}
+        <section className="admin-panel">
+          <div className="admin-panel-heading">
+            <div>
+              <span>FOOD REDISTRIBUTION</span>
+              <h2>Pending food allocations</h2>
+            </div>
+          </div>
+            {allocationSuccess && (
+    <div className="admin-allocation-success" role="status">
+      {allocationSuccess}
+    </div>
+  )}
+
+  {allocationActionError && (
+    <div className="admin-allocation-error" role="alert">
+      {allocationActionError}
+    </div>
+  )}
+
+          {allocationsLoading ? (
+            <div className="admin-loading">
+              Loading pending allocations...
+            </div>
+          ) : allocationsError ? (
+            <div className="admin-error">
+              {allocationsError}
+            </div>
+          ) : pendingAllocations.length === 0 ? (
+            <div className="admin-empty">
+              No donor-accepted food awaiting allocation.
+            </div>
+          ) : (
+            <div className="organization-table-wrapper">
+              <table className="organization-table">
+                <thead>
+                  <tr>
+                    <th>Food</th>
+                    <th>Donor</th>
+                    <th>NGO</th>
+                    <th>Batch</th>
+                    <th>Accepted</th>
+                    <th>Remaining</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  {pendingAllocations.map((allocation) => (
+                    <tr key={allocation.acceptanceId}>
+                      <td>
+                        <strong>{allocation.itemName}</strong>
+                      </td>
+
+                      <td>{allocation.donorName}</td>
+
+                      <td>{allocation.ngoName}</td>
+
+                      <td>#{allocation.batchId}</td>
+
+                      <td>
+                        {allocation.acceptedQuantity}{" "}
+                        {allocation.unit.toLowerCase()}
+                      </td>
+
+                      <td>
+                        <strong>
+                          {allocation.remainingQuantity}{" "}
+                          {allocation.unit.toLowerCase()}
+                        </strong>
+                      </td>
+                      <td>
+                        <div className="admin-allocation-controls">
+                          <input
+                            type="number"
+                            min="0.01"
+                            step="0.01"
+                            max={allocation.remainingQuantity}
+                            placeholder="Qty"
+                            className="admin-allocation-input"
+                            value={allocationQuantities[allocation.acceptanceId] ?? ""}
+                            onChange={(event) => {
+                              setAllocationQuantities((previous) => ({
+                                ...previous,
+                                [allocation.acceptanceId]: event.target.value
+                              }));
+                            }}
+                          />
+
+                          <button
+                            type="button"
+                            className="approve-button"
+                            disabled={allocatingId === allocation.acceptanceId}
+                            onClick={() => handleAllocateFood(allocation)}
+                          >
+                            {allocatingId === allocation.acceptanceId
+                              ? "Allocating..."
+                              : "Allocate"}
+                          </button>
+                        </div>
+                      </td>
+
+                    </tr>
+
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+          )}
         </section>
 
       </main>

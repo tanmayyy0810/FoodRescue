@@ -380,3 +380,88 @@
     padding: 19px;
   }
 }
+/* Admin food allocation controls */
+
+.admin-allocation-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  white-space: nowrap;
+}
+
+.admin-allocation-input {
+  width: 75px;
+  box-sizing: border-box;
+  padding: 9px 8px;
+  border: 1px solid #dce3de;
+  border-radius: 6px;
+  background: #fff;
+  color: #24352a;
+  font: inherit;
+  font-size: 12px;
+}
+
+.admin-allocation-input:focus {
+  outline: none;
+  border-color: #237454;
+}
+
+/* Allocate button — Admin Dashboard theme */
+
+.admin-allocation-controls .approve-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    min-width: 90px;
+    min-height: 38px;
+    margin: 0;
+    padding: 9px 15px;
+
+    background: #176b4a;
+    color: #ffffff;
+
+    border: 1px solid #176b4a;
+    border-radius: 7px;
+
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.2;
+
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.admin-allocation-controls .approve-button:hover:not(:disabled) {
+    background: #12583c;
+    border-color: #12583c;
+}
+
+.admin-allocation-controls .approve-button:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+.admin-allocation-controls button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.admin-allocation-success,
+.admin-allocation-error {
+  margin: 16px 20px;
+  padding: 11px 14px;
+  border-radius: 6px;
+  font-size: 12px;
+}
+
+.admin-allocation-success {
+  color: #176b43;
+  background: #eaf5ed;
+}
+
+.admin-allocation-error {
+  color: #ad3333;
+  background: #fff0f0;
+}
