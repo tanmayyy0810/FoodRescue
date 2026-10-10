@@ -808,3 +808,84 @@
     overflow: hidden;
   }
 }
+  /* Matching NGO requests */
+/* Matching NGO requests - six-column layout */
+
+.donor-dashboard .matching-requests-table {
+    overflow-x: auto;
+}
+
+.donor-dashboard .matching-requests-table .allocation-header,
+.donor-dashboard .matching-requests-table .allocation-row {
+    display: grid;
+    grid-template-columns:
+        minmax(120px, 1.2fr)
+        minmax(130px, 1.2fr)
+        minmax(90px, 0.8fr)
+        minmax(70px, 0.6fr)
+        minmax(90px, 0.8fr)
+        minmax(175px, 1.2fr);
+    align-items: center;
+    gap: 14px;
+    min-width: 850px;
+}
+
+.donor-dashboard .matching-requests-table .accept-request-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: nowrap;
+}
+
+.donor-dashboard .matching-requests-table .accept-quantity-input {
+    width: 68px;
+    box-sizing: border-box;
+    padding: 9px 8px;
+    border: 1px solid #d6ded5;
+    border-radius: 3px;
+    background: #fff;
+    color: #20392c;
+    font: inherit;
+    font-size: 12px;
+}
+
+.donor-dashboard .matching-requests-table .accept-quantity-input:focus {
+    outline: none;
+    border-color: #315a40;
+}
+
+.donor-dashboard .matching-requests-table .accept-request-controls .primary-dashboard-button {
+    width: auto;
+    min-width: 78px;
+    margin: 0;
+    padding: 9px 14px;
+    border-radius: 3px;
+    font-size: 12px;
+    white-space: nowrap;
+}
+
+.donor-dashboard .matching-requests-table button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.accept-success-message {
+    color: #287347;
+    padding: 12px 24px;
+    font-size: 13px;
+}
+
+.accept-error-message {
+    color: #b42318;
+    padding: 12px 24px;
+    font-size: 13px;
+}
+/* Matching requests empty state */
+
+.matching-empty-message {
+    margin: 0;
+    padding: 22px;
+    color: #7d867e;
+    font-size: 10px;
+    line-height: 1.6;
+}  

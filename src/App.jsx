@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 
 import Landing from "./pages/Landing";
@@ -10,36 +11,88 @@ import AdminDashboard from "./pages/AdminDashboard";
 
 import "./App.css";
 
+const SESSION_KEY = "foodrescue_session";
+
+const getDashboardPage = (role) => {
+  switch (role) {
+    case "DONOR":
+      return "donor-dashboard";
+    case "NGO":
+      return "ngo-dashboard";
+    case "ADMIN":
+      return "admin-dashboard";
+    default:
+      return "landing";
+  }
+};
+
+const loadSavedSession = () => {
+  try {
+    const saved = localStorage.getItem(SESSION_KEY);
+
+    if (!saved) return null;
+
+    const session = JSON.parse(saved);
+
+    if (
+      !session ||
+      !session.user ||
+      !["DONOR", "NGO", "ADMIN"].includes(session.role)
+    ) {
+      localStorage.removeItem(SESSION_KEY);
+      return null;
+    }
+
+    return session;
+  } catch {
+    localStorage.removeItem(SESSION_KEY);
+    return null;
+  }
+};
+
 function App() {
-  const [page, setPage] = useState("landing");
-  const [user, setUser] = useState(null);
+  const [session, setSession] = useState(loadSavedSession);
+
+  const [page, setPage] = useState(() => {
+    const savedSession = loadSavedSession();
+
+    return savedSession
+      ? getDashboardPage(savedSession.role)
+      : "landing";
+  });
+
+  const user = session?.user ?? null;
 
   const handleLogin = (role, userData) => {
-    setUser(userData);
-
-    if (role === "DONOR") {
-      setPage("donor-dashboard");
-      return;
-    }
-
-    if (role === "NGO") {
-      setPage("ngo-dashboard");
-      return;
-    }
-
-    if (role === "ADMIN") {
-      setPage("admin-dashboard");
-      return;
-    }
-
     if (role === "DELIVERY") {
       alert("Delivery dashboard will be added next.");
       return;
     }
+
+    const dashboardPage = getDashboardPage(role);
+
+    if (dashboardPage === "landing") {
+      alert("Unsupported account role.");
+      return;
+    }
+
+    const newSession = {
+      role,
+      user: userData,
+    };
+
+    localStorage.setItem(
+      SESSION_KEY,
+      JSON.stringify(newSession)
+    );
+
+    setSession(newSession);
+    setPage(dashboardPage);
   };
 
   const handleLogout = () => {
-    setUser(null);
+    localStorage.removeItem(SESSION_KEY);
+    setSession(null);
     setPage("login");
   };
 
@@ -87,6 +140,7 @@ function App() {
           ngoId={user?.ngoId}
         />
       )}
+
       {page === "admin-dashboard" && (
         <AdminDashboard
           onLogout={handleLogout}

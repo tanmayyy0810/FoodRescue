@@ -9,6 +9,16 @@ function DonorDashboard({ onLogout, onAddFood, donorId }) {
     const [stats, setStats] = useState(null);
     const [loading, setLoading] = useState(true);
     const [allocations, setAllocations] = useState([]);
+    const [matchingRequests, setMatchingRequests] = useState([]);
+    const [matchingLoading, setMatchingLoading] = useState(true);
+    const [matchingError, setMatchingError] = useState("");
+    const [acceptQuantities, setAcceptQuantities] = useState({});
+    const [acceptingRequest, setAcceptingRequest] = useState(null);
+    const [acceptMessage, setAcceptMessage] = useState("");
+    const [acceptError, setAcceptError] = useState("");
+    const [acceptedRequests, setAcceptedRequests] = useState([]);
+    const [acceptedLoading, setAcceptedLoading] = useState(true);
+    const [acceptedError, setAcceptedError] = useState("");
 
     useEffect(() => {
         if (!donorId) {
@@ -63,6 +73,159 @@ function DonorDashboard({ onLogout, onAddFood, donorId }) {
 
         loadDashboard();
     }, [donorId]);
+    useEffect(() => {
+        if (!donorId) {
+            setMatchingLoading(false);
+            return;
+        }
+
+        const loadMatchingRequests = async () => {
+            try {
+                setMatchingLoading(true);
+                setMatchingError("");
+
+                const response = await fetch(
+                    `http://localhost:5000/api/donors/${donorId}/matching-requests`
+                );
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(
+                        data.message || "Failed to fetch matching NGO requests"
+                    );
+                }
+
+                setMatchingRequests(data);
+            } catch (error) {
+                console.error("Matching requests error:", error);
+                setMatchingError(error.message);
+            } finally {
+                setMatchingLoading(false);
+            }
+        };
+
+        loadMatchingRequests();
+    }, [donorId]);
+    useEffect(() => {
+        if (!donorId) {
+            setAcceptedLoading(false);
+            return;
+        }
+
+        const loadAcceptedRequests = async () => {
+            try {
+                setAcceptedLoading(true);
+                setAcceptedError("");
+
+                const response = await fetch(
+                    `http://localhost:5000/api/donors/${donorId}/accepted-requests`
+                );
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(
+                        data.message || "Failed to fetch accepted requests"
+                    );
+                }
+
+                setAcceptedRequests(data);
+            } catch (error) {
+                console.error("Accepted requests error:", error);
+                setAcceptedError(error.message);
+            } finally {
+                setAcceptedLoading(false);
+            }
+        };
+
+        loadAcceptedRequests();
+    }, [donorId]);
+    const handleAcceptRequest = async (request) => {
+        const key = `${request.requestItemId}-${request.batchId}`;
+        const quantity = Number(acceptQuantities[key]);
+
+        setAcceptMessage("");
+        setAcceptError("");
+
+        const maxQuantity = Math.min(
+            request.remainingRequestQuantity,
+            request.batchAvailableQuantity
+        );
+
+        if (!Number.isFinite(quantity) || quantity <= 0 || quantity > maxQuantity) {
+            setAcceptError(
+                `Enter a quantity between 0 and ${maxQuantity} for this request.`
+            );
+            return;
+        }
+
+        try {
+            setAcceptingRequest(key);
+
+            const response = await fetch(
+                "http://localhost:5000/api/donor-acceptances",
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        donorId,
+                        requestItemId: request.requestItemId,
+                        batchId: request.batchId,
+                        quantity
+                    })
+                }
+            );
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.message || "Failed to accept request");
+            }
+
+            setAcceptMessage(
+                `Successfully accepted ${quantity} ${request.unit.toLowerCase()} for ${request.ngoName}.`
+            );
+
+            setAcceptQuantities((previous) => ({
+                ...previous,
+                [key]: ""
+            }));
+
+            const refreshResponse = await fetch(
+                `http://localhost:5000/api/donors/${donorId}/matching-requests`,
+                { cache: "no-store" }
+            );
+
+            if (!refreshResponse.ok) {
+                throw new Error("Acceptance succeeded, but refreshing requests failed.");
+            }
+
+            const refreshedRequests = await refreshResponse.json();
+            setMatchingRequests(refreshedRequests);
+            const acceptedResponse = await fetch(
+    `http://localhost:5000/api/donors/${donorId}/accepted-requests`,
+    { cache: "no-store" }
+);
+
+if (!acceptedResponse.ok) {
+    throw new Error(
+        "Acceptance succeeded, but refreshing accepted requests failed."
+    );
+}
+
+const updatedAcceptedRequests = await acceptedResponse.json();
+setAcceptedRequests(updatedAcceptedRequests);
+
+        } catch (error) {
+            console.error("Accept request error:", error);
+            setAcceptError(error.message);
+        } finally {
+            setAcceptingRequest(null);
+        }
+    };
 
     const today = new Date();
 
@@ -384,6 +547,170 @@ function DonorDashboard({ onLogout, onAddFood, donorId }) {
 
                     </div>
 
+                </section>
+                {/* MATCHING NGO REQUESTS */}
+                <section className="dashboard-card allocation-card">
+                    <div className="card-heading">
+                        <div>
+                            <span>FOOD REDISTRIBUTION</span>
+                            <h2>Matching NGO requests</h2>
+                        </div>
+                    </div>
+                    {acceptMessage && (
+                        <p role="status" className="accept-success-message">
+                            {acceptMessage}
+                        </p>
+                    )}
+
+                    {acceptError && (
+                        <p role="alert" className="accept-error-message">
+                            {acceptError}
+                        </p>
+                    )}
+
+                    {matchingLoading ? (
+                        <p>Loading matching NGO requests...</p>
+                    ) : matchingError ? (
+                        <p>{matchingError}</p>
+                    ) : matchingRequests.length === 0 ? (
+                        <p className="matching-empty-message">
+                            No matching NGO requests available right now.
+                        </p>
+                    ) : (
+                        <div className="allocation-table matching-requests-table">
+                            <div className="allocation-header">
+                                <span>FOOD</span>
+                                <span>NGO</span>
+                                <span>REQUESTED</span>
+                                <span>BATCH</span>
+                                <span>AVAILABLE</span>
+                                <span>ACTION</span>
+                            </div>
+
+                            {matchingRequests.map((request) => (
+                                <div
+                                    className="allocation-row"
+                                    key={`${request.requestItemId}-${request.batchId}`}
+                                >
+                                    <span className="allocation-food">
+                                        {request.itemName}
+                                    </span>
+
+                                    <span>{request.ngoName}</span>
+
+                                    <span>
+                                        {request.remainingRequestQuantity}{" "}
+                                        {request.unit.toLowerCase()}
+                                    </span>
+
+                                    <span>#{request.batchId}</span>
+
+                                    <span>
+                                        {request.batchAvailableQuantity}{" "}
+                                        {request.unit.toLowerCase()}
+                                    </span>
+                                    <div className="accept-request-controls">
+                                        <input
+                                            type="number"
+                                            min="0.01"
+                                            step="0.01"
+                                            max={Math.min(
+                                                request.remainingRequestQuantity,
+                                                request.batchAvailableQuantity
+                                            )}
+                                            placeholder="Qty"
+                                            value={
+                                                acceptQuantities[
+                                                `${request.requestItemId}-${request.batchId}`
+                                                ] ?? ""
+                                            }
+                                            onChange={(event) => {
+                                                const key = `${request.requestItemId}-${request.batchId}`;
+
+                                                setAcceptQuantities((previous) => ({
+                                                    ...previous,
+                                                    [key]: event.target.value
+                                                }));
+                                            }}
+                                            className="accept-quantity-input"
+                                        />
+
+                                        <button
+                                            type="button"
+                                            className="primary-dashboard-button"
+                                            disabled={
+                                                acceptingRequest ===
+                                                `${request.requestItemId}-${request.batchId}`
+                                            }
+                                            onClick={() => handleAcceptRequest(request)}
+                                        >
+                                            {acceptingRequest ===
+                                                `${request.requestItemId}-${request.batchId}`
+                                                ? "Accepting..."
+                                                : "Accept"}
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </section>
+                {/* ACCEPTED NGO REQUESTS */}
+                <section className="dashboard-card allocation-card">
+                    <div className="card-heading">
+                        <div>
+                            <span>FOOD REDISTRIBUTION</span>
+                            <h2>Accepted requests</h2>
+                        </div>
+                    </div>
+
+                    {acceptedLoading ? (
+                        <p className="matching-empty-message">
+                            Loading accepted requests...
+                        </p>
+                    ) : acceptedError ? (
+                        <p className="accept-error-message">
+                            {acceptedError}
+                        </p>
+                    ) : acceptedRequests.length === 0 ? (
+                        <p className="matching-empty-message">
+                            You haven't accepted any NGO requests yet.
+                        </p>
+                    ) : (
+                        <div className="allocation-table">
+                            <div className="allocation-header">
+                                <span>FOOD</span>
+                                <span>NGO</span>
+                                <span>QUANTITY</span>
+                                <span>BATCH</span>
+                                <span>STATUS</span>
+                            </div>
+
+                            {acceptedRequests.map((request) => (
+                                <div
+                                    className="allocation-row"
+                                    key={request.acceptanceId}
+                                >
+                                    <span className="allocation-food">
+                                        {request.itemName}
+                                    </span>
+
+                                    <span>{request.ngoName}</span>
+
+                                    <span>
+                                        {request.acceptedQuantity}{" "}
+                                        {request.unit.toLowerCase()}
+                                    </span>
+
+                                    <span>#{request.batchId}</span>
+
+                                    <span className="allocation-status">
+                                        {request.status}
+                                    </span>
+                                </div>
+                            ))}
+                        </div>
+                    )}
                 </section>
 
 

@@ -1143,6 +1143,279 @@ app.get("/api/donors/:donorId/dashboard", async (req, res) => {
         }
     }
 });
+// Donor accepts an NGO food request
+app.post("/api/donor-acceptances", async (req, res) => {
+    let connection;
+
+    try {
+        const {
+            donorId,
+            requestItemId,
+            batchId,
+            quantity
+        } = req.body || {};
+
+        const donor = Number(donorId);
+        const requestItem = Number(requestItemId);
+        const batch = Number(batchId);
+        const acceptedQuantity = Number(quantity);
+
+        if (
+            !Number.isInteger(donor) || donor <= 0 ||
+            !Number.isInteger(requestItem) || requestItem <= 0 ||
+            !Number.isInteger(batch) || batch <= 0 ||
+            !Number.isFinite(acceptedQuantity) || acceptedQuantity <= 0
+        ) {
+            return res.status(400).json({
+                message: "Valid donor ID, request item ID, batch ID and positive quantity are required."
+            });
+        }
+
+        connection = await getConnection();
+
+        await connection.execute(
+            `BEGIN
+                ACCEPT_NGO_REQUEST(
+                    :donorId,
+                    :requestItemId,
+                    :batchId,
+                    :quantity
+                );
+             END;`,
+            {
+                donorId: donor,
+                requestItemId: requestItem,
+                batchId: batch,
+                quantity: acceptedQuantity
+            }
+        );
+
+        res.status(201).json({
+            message: "NGO food request accepted successfully.",
+            donorId: donor,
+            requestItemId: requestItem,
+            batchId: batch,
+            acceptedQuantity
+        });
+
+    } catch (error) {
+        console.error("Donor acceptance error:", error);
+
+        if (error.errorNum >= 20040 && error.errorNum <= 20047) {
+            return res.status(400).json({
+                message: error.message
+            });
+        }
+
+        res.status(500).json({
+            message: "Unable to accept NGO request.",
+            error: error.message
+        });
+
+    } finally {
+        if (connection) {
+            await connection.close();
+        }
+    }
+});
+// Get pending NGO requests matching a donor's available food
+app.get("/api/donors/:donorId/matching-requests", async (req, res) => {
+    let connection;
+
+    try {
+        const donorId = Number(req.params.donorId);
+
+        if (!Number.isInteger(donorId) || donorId <= 0) {
+            return res.status(400).json({
+                message: "Invalid donor ID"
+            });
+        }
+
+        connection = await getConnection();
+
+        const result = await connection.execute(
+            `
+            WITH request_remaining AS (
+                SELECT
+                    ri.request_item_id,
+                    ri.request_id,
+                    ri.item_id,
+                    ri.unit,
+                    ri.requested_quantity,
+                    NVL(ri.allocated_quantity, 0) AS allocated_quantity,
+                    NVL((
+                        SELECT SUM(da.accepted_quantity)
+                        FROM DONOR_ACCEPTANCE da
+                        WHERE da.request_item_id = ri.request_item_id
+                          AND da.status = 'ACCEPTED'
+                    ), 0) AS accepted_quantity
+                FROM REQUEST_ITEM ri
+                JOIN NGO_REQUEST nr
+                    ON nr.request_id = ri.request_id
+                WHERE nr.status = 'PENDING'
+            ),
+            donor_batches AS (
+                SELECT
+                    fb.batch_id,
+                    fb.item_id,
+                    fb.unit,
+                    fb.expiry_time,
+                    fb.quantity
+                        - NVL((
+                            SELECT SUM(a.allocated_quantity)
+                            FROM ALLOCATION a
+                            WHERE a.batch_id = fb.batch_id
+                              AND a.status <> 'CANCELLED'
+                        ), 0)
+                        - NVL((
+                            SELECT SUM(da.accepted_quantity)
+                            FROM DONOR_ACCEPTANCE da
+                            WHERE da.batch_id = fb.batch_id
+                              AND da.status = 'ACCEPTED'
+                        ), 0) AS available_quantity
+                FROM FOOD_BATCH fb
+                WHERE fb.donor_id = :donorId
+                  AND fb.status = 'AVAILABLE'
+                  AND fb.expiry_time > SYSTIMESTAMP
+            )
+            SELECT
+                rr.request_id,
+                rr.request_item_id,
+                n.ngo_name,
+                fi.item_name,
+                rr.item_id,
+                rr.unit,
+                rr.requested_quantity,
+                rr.allocated_quantity,
+                rr.accepted_quantity,
+                rr.requested_quantity
+                    - rr.allocated_quantity
+                    - rr.accepted_quantity AS remaining_request_quantity,
+                db.batch_id,
+                db.available_quantity AS batch_available_quantity,
+                db.expiry_time,
+                nr.required_by
+            FROM request_remaining rr
+            JOIN NGO_REQUEST nr
+                ON nr.request_id = rr.request_id
+            JOIN NGO n
+                ON n.ngo_id = nr.ngo_id
+            JOIN FOOD_ITEM fi
+                ON fi.item_id = rr.item_id
+            JOIN donor_batches db
+                ON db.item_id = rr.item_id
+               AND db.unit = rr.unit
+            WHERE rr.requested_quantity
+                    - rr.allocated_quantity
+                    - rr.accepted_quantity > 0
+              AND db.available_quantity > 0
+            ORDER BY nr.required_by, db.expiry_time
+            `,
+            { donorId }
+        );
+
+        const requests = result.rows.map((row) => ({
+            requestId: row[0],
+            requestItemId: row[1],
+            ngoName: row[2],
+            itemName: row[3],
+            itemId: row[4],
+            unit: row[5],
+            requestedQuantity: row[6],
+            allocatedQuantity: row[7],
+            acceptedQuantity: row[8],
+            remainingRequestQuantity: row[9],
+            batchId: row[10],
+            batchAvailableQuantity: row[11],
+            expiryTime: row[12],
+            requiredBy: row[13]
+        }));
+
+        res.json(requests);
+
+    } catch (error) {
+        console.error("Matching NGO requests error:", error);
+
+        res.status(500).json({
+            message: "Failed to fetch matching NGO requests",
+            error: error.message
+        });
+
+    } finally {
+        if (connection) {
+            await connection.close();
+        }
+    }
+});
+app.get("/api/donors/:donorId/accepted-requests", async (req, res) => {
+    let connection;
+
+    try {
+        const donorId = Number(req.params.donorId);
+
+        if (!Number.isInteger(donorId) || donorId <= 0) {
+            return res.status(400).json({
+                message: "Invalid donor ID"
+            });
+        }
+
+        connection = await getConnection();
+
+        const result = await connection.execute(
+            `SELECT
+                da.acceptance_id,
+                nr.request_id,
+                ri.request_item_id,
+                n.ngo_name,
+                fi.item_name,
+                da.batch_id,
+                da.accepted_quantity,
+                ri.unit,
+                da.acceptance_date,
+                da.status
+             FROM DONOR_ACCEPTANCE da
+             JOIN REQUEST_ITEM ri
+               ON ri.request_item_id = da.request_item_id
+             JOIN NGO_REQUEST nr
+               ON nr.request_id = ri.request_id
+             JOIN NGO n
+               ON n.ngo_id = nr.ngo_id
+             JOIN FOOD_ITEM fi
+               ON fi.item_id = ri.item_id
+             WHERE da.donor_id = :donorId
+             ORDER BY da.acceptance_date DESC, da.acceptance_id DESC`,
+            { donorId }
+        );
+
+        res.json(
+            result.rows.map((row) => ({
+                acceptanceId: row[0],
+                requestId: row[1],
+                requestItemId: row[2],
+                ngoName: row[3],
+                itemName: row[4],
+                batchId: row[5],
+                acceptedQuantity: row[6],
+                unit: row[7],
+                acceptanceDate: row[8],
+                status: row[9]
+            }))
+        );
+
+    } catch (error) {
+        console.error("Accepted requests error:", error);
+
+        res.status(500).json({
+            message: "Failed to fetch accepted requests",
+            error: error.message
+        });
+
+    } finally {
+        if (connection) {
+            await connection.close();
+        }
+    }
+});
 
 app.listen(PORT, () => {
     console.log(`FoodRescue backend running on http://localhost:${PORT}`);
