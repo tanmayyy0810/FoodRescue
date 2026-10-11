@@ -16,6 +16,27 @@ function AdminDashboard({ onLogout }) {
   const [allocatingId, setAllocatingId] = useState(null);
   const [allocationSuccess, setAllocationSuccess] = useState("");
   const [allocationActionError, setAllocationActionError] = useState("");
+  // Delivery management
+const [deliveries, setDeliveries] = useState([]);
+const [deliveriesLoading, setDeliveriesLoading] = useState(true);
+const [deliveriesError, setDeliveriesError] = useState("");
+const [unassignedAllocations, setUnassignedAllocations] = useState([]);
+const [unassignedLoading, setUnassignedLoading] = useState(true);
+const [unassignedError, setUnassignedError] = useState("");
+const [selectedDeliveryAllocation, setSelectedDeliveryAllocation] = useState(null);
+const [assigningDelivery, setAssigningDelivery] = useState(false);
+const [deliveryAssignmentSuccess, setDeliveryAssignmentSuccess] = useState("");
+const [deliveryAssignmentError, setDeliveryAssignmentError] = useState("");
+const [updatingDeliveryId, setUpdatingDeliveryId] = useState(null);
+const [deliveryStatusSuccess, setDeliveryStatusSuccess] = useState("");
+const [deliveryStatusError, setDeliveryStatusError] = useState("");
+const [deliveryForm, setDeliveryForm] = useState({
+  deliveryDate: "",
+  deliveryPerson: "",
+  deliveryPhone: "",
+  notes: ""
+});
+
 
   const fetchOrganizations = async () => {
     try {
@@ -40,10 +61,222 @@ function AdminDashboard({ onLogout }) {
       setLoading(false);
     }
   };
+  const fetchDeliveries = async () => {
+    try {
+        setDeliveriesLoading(true);
+        setDeliveriesError("");
+
+        const response = await fetch(
+            "http://localhost:5000/api/admin/deliveries",
+            { cache: "no-store" }
+        );
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(
+                data.message || "Failed to load deliveries"
+            );
+        }
+
+        setDeliveries(data);
+    } catch (error) {
+        console.error("Admin deliveries error:", error);
+        setDeliveriesError(error.message);
+    } finally {
+        setDeliveriesLoading(false);
+    }
+};
+const fetchUnassignedAllocations = async () => {
+    try {
+        setUnassignedLoading(true);
+        setUnassignedError("");
+
+        const response = await fetch(
+            "http://localhost:5000/api/admin/unassigned-deliveries",
+            { cache: "no-store" }
+        );
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(
+                data.message || "Failed to load unassigned allocations"
+            );
+        }
+
+        setUnassignedAllocations(data);
+    } catch (error) {
+        console.error("Unassigned allocations error:", error);
+        setUnassignedError(error.message);
+    } finally {
+        setUnassignedLoading(false);
+    }
+};
+const handleAssignDelivery = async () => {
+  if (!selectedDeliveryAllocation || assigningDelivery) {
+    return;
+  }
+
+  setDeliveryAssignmentSuccess("");
+  setDeliveryAssignmentError("");
+
+  const { deliveryDate, deliveryPerson, deliveryPhone, notes } = deliveryForm;
+
+  if (!deliveryDate || !deliveryPerson.trim() || !deliveryPhone.trim()) {
+    setDeliveryAssignmentError(
+      "Delivery date, delivery person and phone number are required."
+    );
+    return;
+  }
+
+  if (!/^[0-9]{10}$/.test(deliveryPhone.trim())) {
+    setDeliveryAssignmentError("Enter a valid 10-digit phone number.");
+    return;
+  }
+
+  const pickupLocation = selectedDeliveryAllocation.pickupLocation?.trim();
+  const dropLocation = selectedDeliveryAllocation.dropLocation?.trim();
+
+  if (!pickupLocation || !dropLocation) {
+    setDeliveryAssignmentError(
+      "Pickup and drop locations are required."
+    );
+    return;
+  }
+
+  try {
+    setAssigningDelivery(true);
+
+    const response = await fetch(
+      "http://localhost:5000/api/admin/deliveries",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          allocationId: selectedDeliveryAllocation.allocationId,
+          deliveryDate: deliveryDate.replace("T", " "),
+          pickupLocation,
+          dropLocation,
+          deliveryPerson: deliveryPerson.trim(),
+          deliveryPhone: deliveryPhone.trim(),
+          notes: notes.trim()
+        })
+      }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(
+        data.message || "Failed to assign delivery."
+      );
+    }
+
+    setDeliveryAssignmentSuccess(
+      `Delivery #${data.deliveryId} assigned successfully.`
+    );
+
+    setSelectedDeliveryAllocation(null);
+    setDeliveryForm({
+      deliveryDate: "",
+      deliveryPerson: "",
+      deliveryPhone: "",
+      notes: ""
+    });
+
+    await Promise.all([
+      fetchDeliveries(),
+      fetchUnassignedAllocations()
+    ]);
+  } catch (error) {
+    console.error("Delivery assignment error:", error);
+    setDeliveryAssignmentError(error.message);
+  } finally {
+    setAssigningDelivery(false);
+  }
+};
+const getNextDeliveryStatus = (status) => {
+  switch (status) {
+    case "ASSIGNED":
+      return "PICKED_UP";
+
+    case "PICKED_UP":
+      return "IN_TRANSIT";
+
+    case "IN_TRANSIT":
+      return "DELIVERED";
+
+    default:
+      return null;
+  }
+};
+const handleUpdateDeliveryStatus = async (delivery) => {
+  const nextStatus = getNextDeliveryStatus(delivery.status);
+
+  if (!nextStatus || updatingDeliveryId !== null) {
+    return;
+  }
+
+  setDeliveryStatusSuccess("");
+  setDeliveryStatusError("");
+
+  const confirmed = window.confirm(
+    `Change Delivery #${delivery.deliveryId} from ${delivery.status} to ${nextStatus}?`
+  );
+
+  if (!confirmed) {
+    return;
+  }
+
+  try {
+    setUpdatingDeliveryId(delivery.deliveryId);
+
+    const response = await fetch(
+      `http://localhost:5000/api/admin/deliveries/${delivery.deliveryId}/status`,
+      {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          status: nextStatus
+        })
+      }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(
+        data.message || "Failed to update delivery status."
+      );
+    }
+
+    setDeliveryStatusSuccess(
+      `Delivery #${delivery.deliveryId} updated to ${nextStatus.replace("_", " ")}.`
+    );
+
+    await fetchDeliveries();
+  } catch (error) {
+    console.error("Delivery status update error:", error);
+    setDeliveryStatusError(error.message);
+  } finally {
+    setUpdatingDeliveryId(null);
+  }
+};
 
   useEffect(() => {
     fetchOrganizations();
   }, []);
+  useEffect(() => {
+    fetchDeliveries();
+}, []);
+useEffect(() => {
+    fetchUnassignedAllocations();
+}, []);
   useEffect(() => {
     const fetchPendingAllocations = async () => {
       try {
@@ -600,6 +833,331 @@ function AdminDashboard({ onLogout }) {
 
           )}
         </section>
+        {/* UNASSIGNED DELIVERY ALLOCATIONS */}
+
+<section className="admin-panel">
+  <div className="admin-panel-heading">
+    <div>
+      <span>DELIVERY ASSIGNMENT</span>
+      <h2>Allocations awaiting delivery</h2>
+    </div>
+
+    <button
+      type="button"
+      className="refresh-button"
+      onClick={fetchUnassignedAllocations}
+    >
+      Refresh
+    </button>
+  </div>
+  {deliveryAssignmentSuccess && (
+  <div className="admin-allocation-success" role="status">
+    {deliveryAssignmentSuccess}
+  </div>
+)}
+
+{deliveryAssignmentError && (
+  <div className="admin-allocation-error" role="alert">
+    {deliveryAssignmentError}
+  </div>
+)}
+
+  {unassignedLoading ? (
+    <div className="admin-loading">
+      Loading unassigned allocations...
+    </div>
+  ) : unassignedError ? (
+    <div className="admin-error">
+      {unassignedError}
+    </div>
+  ) : unassignedAllocations.length === 0 ? (
+    <div className="admin-empty">
+      All allocated food has been assigned for delivery.
+    </div>
+  ) : (
+    <div className="organization-table-wrapper">
+      <table className="organization-table">
+        <thead>
+          <tr>
+            <th>Allocation</th>
+            <th>Food</th>
+            <th>Donor</th>
+            <th>NGO</th>
+            <th>Quantity</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          {unassignedAllocations.map((allocation) => (
+            <tr key={allocation.allocationId}>
+              <td>
+                <strong>#{allocation.allocationId}</strong>
+              </td>
+
+              <td>{allocation.itemName}</td>
+
+              <td>{allocation.donorName}</td>
+
+              <td>{allocation.ngoName}</td>
+
+              <td>
+                {allocation.quantity}{" "}
+                {allocation.unit?.toLowerCase()}
+              </td>
+              <td>
+  <button
+    type="button"
+    className="admin-assign-delivery-button"
+    onClick={() => setSelectedDeliveryAllocation(allocation)}
+  >
+    Assign Delivery
+  </button>
+</td>
+              
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )}
+</section>
+{/* DELIVERY ASSIGNMENT FORM */}
+
+{selectedDeliveryAllocation && (
+  <div className="admin-delivery-form">
+    <h3>
+      Assign Delivery — Allocation #{selectedDeliveryAllocation.allocationId}
+    </h3>
+
+    <p>
+      {selectedDeliveryAllocation.itemName} ·{" "}
+      {selectedDeliveryAllocation.quantity}{" "}
+      {selectedDeliveryAllocation.unit.toLowerCase()}
+    </p>
+
+    <div className="admin-delivery-form-grid">
+
+      <label>
+        Pickup Location
+        <input
+          type="text"
+          value={selectedDeliveryAllocation.pickupLocation || ""}
+          readOnly
+        />
+      </label>
+
+      <label>
+        Drop Location
+        <input
+          type="text"
+          value={selectedDeliveryAllocation.dropLocation || ""}
+          readOnly
+        />
+      </label>
+
+      <label>
+        Delivery Date
+        <input
+          type="datetime-local"
+          value={deliveryForm.deliveryDate}
+          onChange={(event) =>
+            setDeliveryForm((previous) => ({
+              ...previous,
+              deliveryDate: event.target.value
+            }))
+          }
+        />
+      </label>
+
+      <label>
+        Delivery Person
+        <input
+          type="text"
+          placeholder="Enter delivery person's name"
+          value={deliveryForm.deliveryPerson}
+          onChange={(event) =>
+            setDeliveryForm((previous) => ({
+              ...previous,
+              deliveryPerson: event.target.value
+            }))
+          }
+        />
+      </label>
+
+      <label>
+        Delivery Phone
+        <input
+          type="tel"
+          placeholder="10-digit phone number"
+          value={deliveryForm.deliveryPhone}
+          onChange={(event) =>
+            setDeliveryForm((previous) => ({
+              ...previous,
+              deliveryPhone: event.target.value
+            }))
+          }
+        />
+      </label>
+
+      <label>
+        Notes (optional)
+        <input
+          type="text"
+          placeholder="Delivery instructions"
+          value={deliveryForm.notes}
+          onChange={(event) =>
+            setDeliveryForm((previous) => ({
+              ...previous,
+              notes: event.target.value
+            }))
+          }
+        />
+      </label>
+
+    </div>
+
+    <div className="admin-delivery-form-actions">
+      <button
+        type="button"
+        className="refresh-button"
+        onClick={() => setSelectedDeliveryAllocation(null)}
+      >
+        Cancel
+      </button>
+
+      <button
+  type="button"
+  className="admin-assign-delivery-button"
+  onClick={handleAssignDelivery}
+  disabled={assigningDelivery}
+>
+  {assigningDelivery ? "Assigning..." : "Confirm Assignment"}
+</button>
+    </div>
+  </div>
+)}
+        {/* DELIVERY MANAGEMENT */}
+
+<section className="admin-panel">
+  <div className="admin-panel-heading">
+    <div>
+      <span>FOOD DISTRIBUTION</span>
+      <h2>Delivery management</h2>
+    </div>
+
+    <button
+      type="button"
+      className="refresh-button"
+      onClick={fetchDeliveries}
+    >
+      Refresh
+    </button>
+  </div>
+  {deliveryStatusSuccess && (
+  <div className="admin-allocation-success" role="status">
+    {deliveryStatusSuccess}
+  </div>
+)}
+
+{deliveryStatusError && (
+  <div className="admin-allocation-error" role="alert">
+    {deliveryStatusError}
+  </div>
+)}
+
+  {deliveriesLoading ? (
+    <div className="admin-loading">
+      Loading deliveries...
+    </div>
+  ) : deliveriesError ? (
+    <div className="admin-error">
+      {deliveriesError}
+    </div>
+  ) : deliveries.length === 0 ? (
+    <div className="admin-empty">
+      No deliveries have been assigned yet.
+    </div>
+  ) : (
+    <div className="organization-table-wrapper">
+      <table className="organization-table">
+        <thead>
+          <tr>
+            <th>Delivery</th>
+            <th>Food</th>
+            <th>Donor</th>
+            <th>NGO</th>
+            <th>Quantity</th>
+            <th>Delivery person</th>
+            <th>Status</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          {deliveries.map((delivery) => (
+            <tr key={delivery.deliveryId}>
+              <td>
+                <strong>#{delivery.deliveryId}</strong>
+                <span>
+                  Allocation #{delivery.allocationId}
+                </span>
+              </td>
+
+              <td>{delivery.itemName}</td>
+
+              <td>{delivery.donorName}</td>
+
+              <td>{delivery.ngoName}</td>
+
+              <td>
+                {delivery.quantity}{" "}
+                {delivery.unit?.toLowerCase()}
+              </td>
+
+              <td>
+                {delivery.deliveryPerson || "Not assigned"}
+              </td>
+
+              <td>
+                <span
+                  className={`status-badge ${
+                    delivery.status === "DELIVERED"
+                      ? "approved"
+                      : "pending"
+                  }`}
+                >
+                  {delivery.status}
+                </span>
+              </td>
+              <td>
+  {getNextDeliveryStatus(delivery.status) ? (
+    <button
+  type="button"
+  className="admin-assign-delivery-button"
+  onClick={() => handleUpdateDeliveryStatus(delivery)}
+  disabled={updatingDeliveryId !== null}
+>
+  {updatingDeliveryId === delivery.deliveryId
+    ? "Updating..."
+    : `Mark as ${getNextDeliveryStatus(delivery.status).replaceAll("_", " ")}`}
+</button>
+  ) : (
+    <span className="no-action">
+      {delivery.status === "DELIVERED"
+        ? "Completed"
+        : "No action"}
+    </span>
+  )}
+</td>
+              
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )}
+</section>
 
       </main>
 

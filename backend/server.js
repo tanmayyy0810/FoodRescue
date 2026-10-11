@@ -1550,6 +1550,320 @@ app.get("/api/admin/pending-allocations", async (req, res) => {
         }
     }
 });
+// Admin: assign delivery to an allocated food batch
+app.post("/api/admin/deliveries", async (req, res) => {
+    let connection;
+
+    try {
+        const {
+            allocationId,
+            deliveryDate,
+            pickupLocation,
+            dropLocation,
+            deliveryPerson,
+            deliveryPhone,
+            notes
+        } = req.body || {};
+
+        const allocation = Number(allocationId);
+
+        if (!Number.isInteger(allocation) || allocation <= 0) {
+            return res.status(400).json({
+                message: "A valid allocation ID is required."
+            });
+        }
+
+        if (
+            !deliveryDate ||
+            !pickupLocation?.trim() ||
+            !dropLocation?.trim() ||
+            !deliveryPerson?.trim() ||
+            !deliveryPhone?.trim()
+        ) {
+            return res.status(400).json({
+                message: "Delivery date, locations and contact details are required."
+            });
+        }
+
+        connection = await getConnection();
+
+        await connection.execute(
+            `BEGIN
+                ASSIGN_DELIVERY(
+                    :allocationId,
+                    TO_DATE(:deliveryDate, 'YYYY-MM-DD HH24:MI'),
+                    :pickupLocation,
+                    :dropLocation,
+                    :deliveryPerson,
+                    :deliveryPhone,
+                    :notes
+                );
+            END;`,
+            {
+                allocationId: allocation,
+                deliveryDate,
+                pickupLocation: pickupLocation.trim(),
+                dropLocation: dropLocation.trim(),
+                deliveryPerson: deliveryPerson.trim(),
+                deliveryPhone: deliveryPhone.trim(),
+                notes: notes?.trim() || null
+            }
+        );
+
+        const result = await connection.execute(
+            `SELECT delivery_id
+             FROM DELIVERY
+             WHERE allocation_id = :allocationId`,
+            { allocationId: allocation }
+        );
+
+        res.status(201).json({
+            message: "Delivery assigned successfully.",
+            deliveryId: result.rows[0][0],
+            allocationId: allocation,
+            status: "ASSIGNED"
+        });
+
+    } catch (error) {
+        console.error("Delivery assignment error:", error);
+
+        if (
+            error.errorNum >= 20051 &&
+            error.errorNum <= 20054
+        ) {
+            return res.status(400).json({
+                message: error.message
+            });
+        }
+
+        if (error.errorNum === 1) {
+            return res.status(409).json({
+                message: "This allocation already has a delivery."
+            });
+        }
+
+        res.status(500).json({
+            message: "Failed to assign delivery.",
+            error: error.message
+        });
+
+    } finally {
+        if (connection) {
+            await connection.close();
+        }
+    }
+});
+// Admin: update delivery status
+app.patch("/api/admin/deliveries/:deliveryId/status", async (req, res) => {
+    let connection;
+
+    try {
+        const deliveryId = Number(req.params.deliveryId);
+        const { status } = req.body || {};
+
+        if (!Number.isInteger(deliveryId) || deliveryId <= 0) {
+            return res.status(400).json({
+                message: "A valid delivery ID is required."
+            });
+        }
+
+        if (
+            !["PICKED_UP", "IN_TRANSIT", "DELIVERED"].includes(status)
+        ) {
+            return res.status(400).json({
+                message: "Invalid delivery status."
+            });
+        }
+
+        connection = await getConnection();
+
+        await connection.execute(
+            `BEGIN
+                UPDATE_DELIVERY_STATUS(
+                    :deliveryId,
+                    :newStatus
+                );
+            END;`,
+            {
+                deliveryId,
+                newStatus: status
+            }
+        );
+
+        res.json({
+            message: "Delivery status updated successfully.",
+            deliveryId,
+            status
+        });
+
+    } catch (error) {
+        console.error("Delivery status update error:", error);
+
+        if (error.errorNum === 20055) {
+            return res.status(400).json({
+                message: "Invalid delivery status transition."
+            });
+        }
+
+        if (error.errorNum === 20056) {
+            return res.status(404).json({
+                message: "Delivery not found."
+            });
+        }
+
+        res.status(500).json({
+            message: "Failed to update delivery status.",
+            error: error.message
+        });
+
+    } finally {
+        if (connection) {
+            await connection.close();
+        }
+    }
+});
+// Admin: list deliveries with donor, NGO and food information
+app.get("/api/admin/deliveries", async (req, res) => {
+    let connection;
+
+    try {
+        connection = await getConnection();
+
+        const result = await connection.execute(`
+            SELECT
+                d.delivery_id,
+                d.allocation_id,
+                don.donor_name,
+                n.ngo_name,
+                fi.item_name,
+                a.allocated_quantity,
+                fb.unit,
+                d.delivery_date,
+                d.pickup_location,
+                d.drop_location,
+                d.delivery_person,
+                d.delivery_phone,
+                d.status,
+                d.delivered_at,
+                d.notes
+            FROM DELIVERY d
+            JOIN ALLOCATION a
+                ON a.allocation_id = d.allocation_id
+            JOIN FOOD_BATCH fb
+                ON fb.batch_id = a.batch_id
+            JOIN DONOR don
+                ON don.donor_id = fb.donor_id
+            JOIN REQUEST_ITEM ri
+                ON ri.request_item_id = a.request_item_id
+            JOIN NGO_REQUEST nr
+                ON nr.request_id = ri.request_id
+            JOIN NGO n
+                ON n.ngo_id = nr.ngo_id
+            JOIN FOOD_ITEM fi
+                ON fi.item_id = ri.item_id
+            ORDER BY d.delivery_id DESC
+        `);
+
+        const deliveries = result.rows.map((row) => ({
+            deliveryId: row[0],
+            allocationId: row[1],
+            donorName: row[2],
+            ngoName: row[3],
+            itemName: row[4],
+            quantity: row[5],
+            unit: row[6],
+            deliveryDate: row[7],
+            pickupLocation: row[8],
+            dropLocation: row[9],
+            deliveryPerson: row[10],
+            deliveryPhone: row[11],
+            status: row[12],
+            deliveredAt: row[13],
+            notes: row[14]
+        }));
+
+        res.json(deliveries);
+
+    } catch (error) {
+        console.error("Delivery listing error:", error);
+
+        res.status(500).json({
+            message: "Failed to fetch deliveries.",
+            error: error.message
+        });
+
+    } finally {
+        if (connection) {
+            await connection.close();
+        }
+    }
+});
+// Admin: list allocations awaiting delivery assignment
+app.get("/api/admin/unassigned-deliveries", async (req, res) => {
+    let connection;
+
+    try {
+        connection = await getConnection();
+
+        const result = await connection.execute(`
+            SELECT
+                a.allocation_id,
+                fi.item_name,
+                a.allocated_quantity,
+                fb.unit,
+                don.donor_name,
+                don.address,
+                n.ngo_name,
+                n.address
+            FROM ALLOCATION a
+            JOIN FOOD_BATCH fb
+                ON fb.batch_id = a.batch_id
+            JOIN DONOR don
+                ON don.donor_id = fb.donor_id
+            JOIN FOOD_ITEM fi
+                ON fi.item_id = fb.item_id
+            JOIN REQUEST_ITEM ri
+                ON ri.request_item_id = a.request_item_id
+            JOIN NGO_REQUEST nr
+                ON nr.request_id = ri.request_id
+            JOIN NGO n
+                ON n.ngo_id = nr.ngo_id
+            WHERE a.status = 'ALLOCATED'
+              AND NOT EXISTS (
+                  SELECT 1
+                  FROM DELIVERY d
+                  WHERE d.allocation_id = a.allocation_id
+              )
+            ORDER BY a.allocation_id
+        `);
+
+        res.json(
+            result.rows.map((row) => ({
+                allocationId: row[0],
+                itemName: row[1],
+                quantity: row[2],
+                unit: row[3],
+                donorName: row[4],
+                pickupLocation: row[5],
+                ngoName: row[6],
+                dropLocation: row[7]
+            }))
+        );
+
+    } catch (error) {
+        console.error("Unassigned deliveries error:", error);
+
+        res.status(500).json({
+            message: "Failed to fetch unassigned allocations.",
+            error: error.message
+        });
+
+    } finally {
+        if (connection) {
+            await connection.close();
+        }
+    }
+});
 
 app.listen(PORT, () => {
     console.log(`FoodRescue backend running on http://localhost:${PORT}`);
