@@ -1864,6 +1864,165 @@ app.get("/api/admin/unassigned-deliveries", async (req, res) => {
         }
     }
 });
+// NGO: View incoming deliveries
+app.get("/api/ngos/:ngoId/deliveries", async (req, res) => {
+  let connection;
+
+  try {
+    const ngoId = Number(req.params.ngoId);
+
+    if (!Number.isInteger(ngoId) || ngoId <= 0) {
+      return res.status(400).json({
+        message: "Invalid NGO ID."
+      });
+    }
+
+    connection = await getConnection();
+
+    const result = await connection.execute(
+      `
+      SELECT
+        d.delivery_id,
+        d.allocation_id,
+        fi.item_name,
+        a.allocated_quantity,
+        fb.unit,
+        don.donor_name,
+        d.pickup_location,
+        d.drop_location,
+        d.delivery_date,
+        d.delivery_person,
+        d.delivery_phone,
+        d.status,
+        d.delivered_at
+      FROM DELIVERY d
+      JOIN ALLOCATION a
+        ON a.allocation_id = d.allocation_id
+      JOIN FOOD_BATCH fb
+        ON fb.batch_id = a.batch_id
+      JOIN DONOR don
+        ON don.donor_id = fb.donor_id
+      JOIN REQUEST_ITEM ri
+        ON ri.request_item_id = a.request_item_id
+      JOIN NGO_REQUEST nr
+        ON nr.request_id = ri.request_id
+      JOIN FOOD_ITEM fi
+        ON fi.item_id = ri.item_id
+      WHERE nr.ngo_id = :ngoId
+      ORDER BY d.delivery_id DESC
+      `,
+      { ngoId }
+    );
+
+    const deliveries = result.rows.map((row) => ({
+      deliveryId: row[0],
+      allocationId: row[1],
+      itemName: row[2],
+      quantity: row[3],
+      unit: row[4],
+      donorName: row[5],
+      pickupLocation: row[6],
+      dropLocation: row[7],
+      deliveryDate: row[8],
+      deliveryPerson: row[9],
+      deliveryPhone: row[10],
+      status: row[11],
+      deliveredAt: row[12]
+    }));
+
+    return res.json(deliveries);
+  } catch (error) {
+    console.error("Error fetching NGO deliveries:", error);
+
+    return res.status(500).json({
+      message: "Failed to fetch NGO deliveries.",
+      error: error.message
+    });
+  } finally {
+    if (connection) {
+      await connection.close();
+    }
+  }
+});
+// Donor: View deliveries of donated food
+app.get("/api/donors/:donorId/deliveries", async (req, res) => {
+    let connection;
+
+    try {
+        const donorId = Number(req.params.donorId);
+
+        if (!Number.isInteger(donorId) || donorId <= 0) {
+            return res.status(400).json({
+                message: "Invalid donor ID."
+            });
+        }
+
+        connection = await getConnection();
+
+        const result = await connection.execute(
+            `
+            SELECT
+                d.delivery_id,
+                d.allocation_id,
+                fi.item_name,
+                a.allocated_quantity,
+                fb.unit,
+                n.ngo_name,
+                d.pickup_location,
+                d.drop_location,
+                d.delivery_date,
+                d.delivery_person,
+                d.delivery_phone,
+                d.status,
+                d.delivered_at
+            FROM DELIVERY d
+            JOIN ALLOCATION a
+                ON a.allocation_id = d.allocation_id
+            JOIN FOOD_BATCH fb
+                ON fb.batch_id = a.batch_id
+            JOIN FOOD_ITEM fi
+                ON fi.item_id = fb.item_id
+            JOIN REQUEST_ITEM ri
+                ON ri.request_item_id = a.request_item_id
+            JOIN NGO_REQUEST nr
+                ON nr.request_id = ri.request_id
+            JOIN NGO n
+                ON n.ngo_id = nr.ngo_id
+            WHERE fb.donor_id = :donorId
+            ORDER BY d.delivery_id DESC
+            `,
+            { donorId }
+        );
+
+        const deliveries = result.rows.map((row) => ({
+            deliveryId: row[0],
+            allocationId: row[1],
+            itemName: row[2],
+            quantity: row[3],
+            unit: row[4],
+            ngoName: row[5],
+            pickupLocation: row[6],
+            dropLocation: row[7],
+            deliveryDate: row[8],
+            deliveryPerson: row[9],
+            deliveryPhone: row[10],
+            status: row[11],
+            deliveredAt: row[12]
+        }));
+
+        return res.json(deliveries);
+    } catch (error) {
+        console.error("Error fetching donor deliveries:", error);
+
+        return res.status(500).json({
+            message: "Failed to fetch donor deliveries."
+        });
+    } finally {
+        if (connection) {
+            await connection.close();
+        }
+    }
+});
 
 app.listen(PORT, () => {
     console.log(`FoodRescue backend running on http://localhost:${PORT}`);

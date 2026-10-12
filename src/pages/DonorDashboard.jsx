@@ -8,7 +8,11 @@ function DonorDashboard({ onLogout, onAddFood, donorId }) {
     const [donor, setDonor] = useState(null);
     const [stats, setStats] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [activeSection, setActiveSection] = useState("dashboard");
     const [allocations, setAllocations] = useState([]);
+    const [deliveries, setDeliveries] = useState([]);
+const [deliveriesLoading, setDeliveriesLoading] = useState(true);
+const [deliveriesError, setDeliveriesError] = useState("");
     const [matchingRequests, setMatchingRequests] = useState([]);
     const [matchingLoading, setMatchingLoading] = useState(true);
     const [matchingError, setMatchingError] = useState("");
@@ -141,6 +145,41 @@ function DonorDashboard({ onLogout, onAddFood, donorId }) {
 
         loadAcceptedRequests();
     }, [donorId]);
+    // Load deliveries for the logged-in donor
+const loadDeliveries = async () => {
+    if (!donorId) {
+        setDeliveries([]);
+        setDeliveriesLoading(false);
+        return;
+    }
+
+    try {
+        setDeliveriesLoading(true);
+        setDeliveriesError("");
+
+        const response = await fetch(
+            `http://localhost:5000/api/donors/${donorId}/deliveries`
+        );
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(
+                data.message || "Failed to fetch donor deliveries."
+            );
+        }
+
+        setDeliveries(data);
+    } catch (error) {
+        console.error("Donor delivery loading error:", error);
+        setDeliveriesError(error.message);
+    } finally {
+        setDeliveriesLoading(false);
+    }
+};
+useEffect(() => {
+    loadDeliveries();
+}, [donorId]);
     const handleAcceptRequest = async (request) => {
         const key = `${request.requestItemId}-${request.batchId}`;
         const quantity = Number(acceptQuantities[key]);
@@ -264,10 +303,15 @@ setAcceptedRequests(updatedAcceptedRequests);
 
                     <p className="nav-label">MAIN</p>
 
-                    <button className="nav-item active">
-                        <span className="nav-icon">01</span>
-                        Dashboard
-                    </button>
+                    <button
+    className={`nav-item ${
+        activeSection === "dashboard" ? "active" : ""
+    }`}
+    onClick={() => setActiveSection("dashboard")}
+>
+    <span className="nav-icon">01</span>
+    Dashboard
+</button>
 
                     <button className="nav-item">
                         <span className="nav-icon">02</span>
@@ -279,10 +323,15 @@ setAcceptedRequests(updatedAcceptedRequests);
                         Allocations
                     </button>
 
-                    <button className="nav-item">
-                        <span className="nav-icon">04</span>
-                        Deliveries
-                    </button>
+                    <button
+    className={`nav-item ${
+        activeSection === "deliveries" ? "active" : ""
+    }`}
+    onClick={() => setActiveSection("deliveries")}
+>
+    <span className="nav-icon">04</span>
+    Deliveries
+</button>
 
 
                     <p className="nav-label nav-label-spaced">
@@ -353,6 +402,8 @@ setAcceptedRequests(updatedAcceptedRequests);
                     </div>
 
                 </header>
+                {activeSection === "dashboard" && (
+    <>
 
 
                 {/* STATISTICS */}
@@ -788,6 +839,129 @@ setAcceptedRequests(updatedAcceptedRequests);
                     </div>
 
                 </section>
+                    </>
+)}
+{/* DONOR DELIVERIES VIEW */}
+{activeSection === "deliveries" && (
+    <section className="dashboard-card allocation-card">
+        <div className="card-heading">
+            <div>
+                <span>FOOD DISTRIBUTION</span>
+                <h2>My Deliveries</h2>
+            </div>
+
+            <button
+                type="button"
+                className="outline-button"
+                onClick={loadDeliveries}
+                disabled={deliveriesLoading}
+            >
+                {deliveriesLoading ? "Refreshing..." : "Refresh"}
+            </button>
+        </div>
+
+        {deliveriesLoading ? (
+            <p className="matching-empty-message">
+                Loading deliveries...
+            </p>
+        ) : deliveriesError ? (
+            <p className="accept-error-message" role="alert">
+                {deliveriesError}
+            </p>
+        ) : deliveries.length === 0 ? (
+            <p className="matching-empty-message">
+                No deliveries assigned yet. Deliveries will appear here
+                when Admin arranges delivery of your donated food.
+            </p>
+        ) : (
+            <div className="donor-deliveries-list">
+                {deliveries.map((delivery) => (
+                    <div
+                        className="donor-delivery-card"
+                        key={delivery.deliveryId}
+                    >
+                        <div className="donor-delivery-card-header">
+                            <div>
+                                <strong>{delivery.itemName}</strong>
+                                <span>
+                                    Delivery #{delivery.deliveryId}
+                                    {" · "}
+                                    Allocation #{delivery.allocationId}
+                                </span>
+                            </div>
+
+                            <span
+                                className={`donor-delivery-status ${
+                                    delivery.status === "DELIVERED"
+                                        ? "completed"
+                                        : "active"
+                                }`}
+                            >
+                                {delivery.status.replaceAll("_", " ")}
+                            </span>
+                        </div>
+
+                        <div className="donor-delivery-details">
+                            <div>
+                                <span>QUANTITY</span>
+                                <strong>
+                                    {delivery.quantity} {delivery.unit}
+                                </strong>
+                            </div>
+
+                            <div>
+                                <span>RECIPIENT NGO</span>
+                                <strong>{delivery.ngoName}</strong>
+                            </div>
+
+                            <div>
+                                <span>DELIVERY PERSON</span>
+                                <strong>
+                                    {delivery.deliveryPerson || "Not assigned"}
+                                </strong>
+                            </div>
+
+                            <div>
+                                <span>CONTACT</span>
+                                <strong>
+                                    {delivery.deliveryPhone || "Not available"}
+                                </strong>
+                            </div>
+
+                            <div>
+                                <span>SCHEDULED DELIVERY</span>
+                                <strong>
+                                    {delivery.deliveryDate
+                                        ? new Date(
+                                              delivery.deliveryDate
+                                          ).toLocaleString("en-IN")
+                                        : "Not scheduled"}
+                                </strong>
+                            </div>
+
+                            <div>
+                                <span>DELIVERY STATUS</span>
+                                <strong>
+                                    {delivery.status.replaceAll("_", " ")}
+                                </strong>
+                            </div>
+                        </div>
+
+                        {delivery.status === "DELIVERED" && (
+    <p className="donor-delivery-completed">
+        {delivery.deliveredAt
+            ? `Delivered on ${new Date(
+                  delivery.deliveredAt
+              ).toLocaleString("en-IN")}`
+            : "Delivery completed successfully"}
+    </p>
+)}
+                    </div>
+                ))}
+            </div>
+        )}
+    </section>
+)}
 
 
                 {/* FOOTER */}

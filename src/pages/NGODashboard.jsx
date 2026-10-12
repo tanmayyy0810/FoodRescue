@@ -5,6 +5,9 @@ function NGODashboard({ onLogout, ngoId }) {
     const [requests, setRequests] = useState([]);
     const [batches, setBatches] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [deliveries, setDeliveries] = useState([]);
+    const [deliveriesLoading, setDeliveriesLoading] = useState(true);
+    const [deliveriesError, setDeliveriesError] = useState("");
 
     const [activeSection, setActiveSection] = useState("dashboard");
 
@@ -58,9 +61,45 @@ function NGODashboard({ onLogout, ngoId }) {
             setLoading(false);
         }
     };
+    // Load incoming deliveries for the logged-in NGO
+    const loadDeliveries = async () => {
+        if (!ngoId) {
+            setDeliveries([]);
+            setDeliveriesLoading(false);
+            return;
+        }
+
+        try {
+            setDeliveriesLoading(true);
+            setDeliveriesError("");
+
+            const response = await fetch(
+                `http://localhost:5000/api/ngos/${ngoId}/deliveries`
+            );
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(
+                    data.message || "Failed to fetch incoming deliveries."
+                );
+            }
+
+            setDeliveries(data);
+        } catch (error) {
+            console.error("NGO delivery loading error:", error);
+            setDeliveriesError(error.message);
+        } finally {
+            setDeliveriesLoading(false);
+        }
+    };
 
     useEffect(() => {
         loadData();
+    }, [ngoId]);
+
+    useEffect(() => {
+        loadDeliveries();
     }, [ngoId]);
 
     // DATE AND GREETING
@@ -419,11 +458,10 @@ function NGODashboard({ onLogout, ngoId }) {
                     </p>
 
                     <button
-                        className={`ngo-nav-item ${
-                            activeSection === "dashboard"
-                                ? "active"
-                                : ""
-                        }`}
+                        className={`ngo-nav-item ${activeSection === "dashboard"
+                            ? "active"
+                            : ""
+                            }`}
                         onClick={() =>
                             setActiveSection("dashboard")
                         }
@@ -435,11 +473,10 @@ function NGODashboard({ onLogout, ngoId }) {
                     </button>
 
                     <button
-                        className={`ngo-nav-item ${
-                            activeSection === "requests"
-                                ? "active"
-                                : ""
-                        }`}
+                        className={`ngo-nav-item ${activeSection === "requests"
+                            ? "active"
+                            : ""
+                            }`}
                         onClick={() =>
                             setActiveSection("requests")
                         }
@@ -451,11 +488,10 @@ function NGODashboard({ onLogout, ngoId }) {
                     </button>
 
                     <button
-                        className={`ngo-nav-item ${
-                            activeSection === "available"
-                                ? "active"
-                                : ""
-                        }`}
+                        className={`ngo-nav-item ${activeSection === "available"
+                            ? "active"
+                            : ""
+                            }`}
                         onClick={() =>
                             setActiveSection("available")
                         }
@@ -479,10 +515,9 @@ function NGODashboard({ onLogout, ngoId }) {
                     </button>
 
                     <button
-                        className="ngo-nav-item"
-                        onClick={() =>
-                            setActiveSection("requests")
-                        }
+                        className={`ngo-nav-item ${activeSection === "deliveries" ? "active" : ""
+                            }`}
+                        onClick={() => setActiveSection("deliveries")}
                     >
                         <span className="ngo-nav-icon">
                             05
@@ -925,6 +960,129 @@ function NGODashboard({ onLogout, ngoId }) {
                         </div>
                     </section>
                 )}
+                {/* INCOMING DELIVERIES VIEW */}
+
+                {activeSection === "deliveries" && (
+                    <section className="ngo-dashboard-card ngo-full-section">
+                        <div className="ngo-card-heading">
+                            <div>
+                                <span>FOOD DISTRIBUTION</span>
+                                <h2>Incoming Deliveries</h2>
+                            </div>
+
+                            <button
+                                type="button"
+                                className="ngo-outline-button"
+                                onClick={loadDeliveries}
+                                disabled={deliveriesLoading}
+                            >
+                                {deliveriesLoading ? "Refreshing..." : "Refresh"}
+                            </button>
+                        </div>
+
+                        {deliveriesLoading ? (
+                            <div className="ngo-table-empty">
+                                Loading incoming deliveries...
+                            </div>
+                        ) : deliveriesError ? (
+                            <div className="ngo-table-empty" role="alert">
+                                {deliveriesError}
+                            </div>
+                        ) : deliveries.length === 0 ? (
+                            <div className="ngo-table-empty">
+                                No incoming deliveries yet. Deliveries will appear
+                                here when Admin assigns them to your food allocations.
+                            </div>
+                        ) : (
+                            <div className="ngo-deliveries-list">
+                                {deliveries.map((delivery) => (
+                                    <div
+                                        className="ngo-delivery-card"
+                                        key={delivery.deliveryId}
+                                    >
+                                        <div className="ngo-delivery-card-header">
+                                            <div>
+                                                <strong>{delivery.itemName}</strong>
+                                                <span>
+                                                    Delivery #{delivery.deliveryId}
+                                                    {" · "}
+                                                    Allocation #{delivery.allocationId}
+                                                </span>
+                                            </div>
+
+                                            <span
+                                                className={getStatusClass(
+                                                    delivery.status === "DELIVERED"
+                                                        ? "COMPLETED"
+                                                        : "PENDING"
+                                                )}
+                                            >
+                                                {delivery.status.replaceAll("_", " ")}
+                                            </span>
+                                        </div>
+
+                                        <div className="ngo-delivery-details">
+                                            <div>
+                                                <span>QUANTITY</span>
+                                                <strong>
+                                                    {delivery.quantity} {delivery.unit}
+                                                </strong>
+                                            </div>
+
+                                            <div>
+                                                <span>DONOR</span>
+                                                <strong>{delivery.donorName}</strong>
+                                            </div>
+
+                                            <div>
+                                                <span>DELIVERY PERSON</span>
+                                                <strong>
+                                                    {delivery.deliveryPerson || "Not assigned"}
+                                                </strong>
+                                            </div>
+
+                                            <div>
+                                                <span>CONTACT</span>
+                                                <strong>
+                                                    {delivery.deliveryPhone || "Not available"}
+                                                </strong>
+                                            </div>
+
+                                            <div>
+                                                <span>SCHEDULED DELIVERY</span>
+                                                <strong>
+                                                    {delivery.deliveryDate
+                                                        ? new Date(
+                                                            delivery.deliveryDate
+                                                        ).toLocaleString("en-IN")
+                                                        : "Not scheduled"}
+                                                </strong>
+                                            </div>
+
+                                            <div>
+                                                <span>DELIVERY STATUS</span>
+                                                <strong>
+                                                    {delivery.status.replaceAll("_", " ")}
+                                                </strong>
+                                            </div>
+                                        </div>
+
+                                        {delivery.status === "DELIVERED" && (
+                                            <p className="ngo-delivery-completed">
+                                                {delivery.deliveredAt
+                                                    ? `Delivered on ${new Date(
+                                                        delivery.deliveredAt
+                                                    ).toLocaleString("en-IN")}`
+                                                    : "Delivery completed successfully"}
+                                            </p>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </section>
+                )}
+
 
                 {/* REQUEST MODAL */}
 
