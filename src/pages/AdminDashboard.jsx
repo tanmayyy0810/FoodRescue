@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import "./AdminDashboard.css";
 
-function AdminDashboard({ onLogout }) {
+function AdminDashboard({ onLogout, user }) {
   const [organizations, setOrganizations] = useState({
     donors: [],
     ngos: [],
@@ -44,7 +44,12 @@ const [deliveryForm, setDeliveryForm] = useState({
       setError("");
 
       const response = await fetch(
-        "http://localhost:5000/api/admin/organizations"
+        "http://localhost:5000/api/admin/organizations",
+        {
+    headers: {
+      Authorization: `Bearer ${user.token}`
+    }
+  }
       );
 
       const data = await response.json();
@@ -68,7 +73,11 @@ const [deliveryForm, setDeliveryForm] = useState({
 
         const response = await fetch(
             "http://localhost:5000/api/admin/deliveries",
-            { cache: "no-store" }
+            { cache: "no-store",
+              headers: {
+            Authorization: `Bearer ${user.token}`
+        }
+             }
         );
 
         const data = await response.json();
@@ -94,7 +103,11 @@ const fetchUnassignedAllocations = async () => {
 
         const response = await fetch(
             "http://localhost:5000/api/admin/unassigned-deliveries",
-            { cache: "no-store" }
+            { cache: "no-store",
+              headers: {
+      Authorization: `Bearer ${user.token}`
+    }
+             }
         );
 
         const data = await response.json();
@@ -153,7 +166,8 @@ const handleAssignDelivery = async () => {
       {
         method: "POST",
         headers: {
-          "Content-Type": "application/json"
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${user.token}`
         },
         body: JSON.stringify({
           allocationId: selectedDeliveryAllocation.allocationId,
@@ -239,7 +253,8 @@ const handleUpdateDeliveryStatus = async (delivery) => {
       {
         method: "PATCH",
         headers: {
-          "Content-Type": "application/json"
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${user.token}`
         },
         body: JSON.stringify({
           status: nextStatus
@@ -284,7 +299,12 @@ useEffect(() => {
         setAllocationsError("");
 
         const response = await fetch(
-          "http://localhost:5000/api/admin/pending-allocations"
+          "http://localhost:5000/api/admin/pending-allocations",
+           {
+    headers: {
+      Authorization: `Bearer ${user.token}`
+    }
+  }
         );
 
         const data = await response.json();
@@ -334,6 +354,7 @@ useEffect(() => {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
+              Authorization: `Bearer ${user.token}`
           },
           body: JSON.stringify({
             accountType,
@@ -413,7 +434,9 @@ useEffect(() => {
 
       const refreshResponse = await fetch(
         "http://localhost:5000/api/admin/pending-allocations",
-        { cache: "no-store" }
+        { cache: "no-store",headers: {
+      Authorization: `Bearer ${user.token}`
+    } }
       );
 
       if (!refreshResponse.ok) {

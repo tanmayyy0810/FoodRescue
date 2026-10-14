@@ -144,6 +144,7 @@ function App() {
       {page === "admin-dashboard" && (
         <AdminDashboard
           onLogout={handleLogout}
+          user={user}
         />
       )}
 

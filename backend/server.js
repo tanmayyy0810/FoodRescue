@@ -4,6 +4,11 @@ const { getConnection } = require("./db");
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+const jwt = require("jsonwebtoken");
+const {
+    authenticateToken,
+    requireRole
+} = require("./authMiddleware");
 
 app.use(cors());
 app.use(express.json());
@@ -411,7 +416,7 @@ app.post("/api/allocations", async (req, res) => {
         }
     }
 });
-app.get("/api/admin/pending-organizations", async (req, res) => {
+app.get("/api/admin/pending-organizations",authenticateToken, requireRole("ADMIN"), async (req, res) => {
     let connection;
 
     try {
@@ -464,7 +469,7 @@ app.get("/api/admin/pending-organizations", async (req, res) => {
         }
     }
 });
-app.post("/api/admin/approve-organization", async (req, res) => {
+app.post("/api/admin/approve-organization", authenticateToken, requireRole("ADMIN"),async (req, res) => {
     let connection;
 
     try {
@@ -514,7 +519,7 @@ app.post("/api/admin/approve-organization", async (req, res) => {
         }
     }
 });
-app.post("/api/admin/reject-organization", async (req, res) => {
+app.post("/api/admin/reject-organization", authenticateToken, requireRole("ADMIN"),async (req, res) => {
     let connection;
 
     try {
@@ -561,7 +566,7 @@ app.post("/api/admin/reject-organization", async (req, res) => {
         }
     }
 });
-app.post("/api/admin/blacklist-organization", async (req, res) => {
+app.post("/api/admin/blacklist-organization", authenticateToken, requireRole("ADMIN"), async (req, res) => {
     let connection;
 
     try {
@@ -609,7 +614,7 @@ app.post("/api/admin/blacklist-organization", async (req, res) => {
         }
     }
 });
-app.post("/api/admin/unblacklist-organization", async (req, res) => {
+app.post("/api/admin/unblacklist-organization",authenticateToken, requireRole("ADMIN"), async (req, res) => {
     let connection;
 
     try {
@@ -657,7 +662,11 @@ app.post("/api/admin/unblacklist-organization", async (req, res) => {
         }
     }
 });
-app.get("/api/admin/organizations", async (req, res) => {
+app.get(
+    "/api/admin/organizations",
+    authenticateToken,
+    requireRole("ADMIN"),
+    async (req, res) => {
     let connection;
 
     try {
@@ -977,15 +986,29 @@ app.post("/api/login", async (req, res) => {
             }
         }
 
-        res.json({
-            message: "Login successful",
-            userId,
-            username: loggedInUsername,
-            role,
-            donorId,
-            ngoId,
-            status: accountStatus
-        });
+        const token = jwt.sign(
+    {
+        userId,
+        role,
+        donorId,
+        ngoId
+    },
+    process.env.JWT_SECRET,
+    {
+        expiresIn: "8h"
+    }
+);
+
+res.json({
+    message: "Login successful",
+    userId,
+    username: loggedInUsername,
+    role,
+    donorId,
+    ngoId,
+    status: accountStatus,
+    token
+});
 
     } catch (error) {
         console.error("Login error:", error);
@@ -1465,7 +1488,7 @@ app.get("/api/donors/:donorId/accepted-requests", async (req, res) => {
     }
 });
 // Admin: list donor acceptances awaiting allocation
-app.get("/api/admin/pending-allocations", async (req, res) => {
+app.get("/api/admin/pending-allocations",authenticateToken, requireRole("ADMIN"), async (req, res) => {
     let connection;
 
     try {
@@ -1551,7 +1574,7 @@ app.get("/api/admin/pending-allocations", async (req, res) => {
     }
 });
 // Admin: assign delivery to an allocated food batch
-app.post("/api/admin/deliveries", async (req, res) => {
+app.post("/api/admin/deliveries", authenticateToken, requireRole("ADMIN"), async (req, res) => {
     let connection;
 
     try {
@@ -1654,7 +1677,7 @@ app.post("/api/admin/deliveries", async (req, res) => {
     }
 });
 // Admin: update delivery status
-app.patch("/api/admin/deliveries/:deliveryId/status", async (req, res) => {
+app.patch("/api/admin/deliveries/:deliveryId/status", authenticateToken, requireRole("ADMIN"), async (req, res) => {
     let connection;
 
     try {
@@ -1723,7 +1746,7 @@ app.patch("/api/admin/deliveries/:deliveryId/status", async (req, res) => {
     }
 });
 // Admin: list deliveries with donor, NGO and food information
-app.get("/api/admin/deliveries", async (req, res) => {
+app.get("/api/admin/deliveries", authenticateToken, requireRole("ADMIN"), async (req, res) => {
     let connection;
 
     try {
@@ -1799,7 +1822,7 @@ app.get("/api/admin/deliveries", async (req, res) => {
     }
 });
 // Admin: list allocations awaiting delivery assignment
-app.get("/api/admin/unassigned-deliveries", async (req, res) => {
+app.get("/api/admin/unassigned-deliveries", authenticateToken, requireRole("ADMIN"), async (req, res) => {
     let connection;
 
     try {
