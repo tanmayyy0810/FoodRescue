@@ -9,6 +9,10 @@ function AdminDashboard({ onLogout, user }) {
 
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
+  const [organizationSearch, setOrganizationSearch] = useState("");
+  const [showAllOrganizations, setShowAllOrganizations] = useState(false);
+  const [unassignedSearch, setUnassignedSearch] = useState("");
+  const [showAllUnassigned, setShowAllUnassigned] = useState(false);
   const [pendingAllocations, setPendingAllocations] = useState([]);
   const [allocationsLoading, setAllocationsLoading] = useState(true);
   const [allocationsError, setAllocationsError] = useState("");
@@ -16,26 +20,30 @@ function AdminDashboard({ onLogout, user }) {
   const [allocatingId, setAllocatingId] = useState(null);
   const [allocationSuccess, setAllocationSuccess] = useState("");
   const [allocationActionError, setAllocationActionError] = useState("");
+  const [allocationSearch, setAllocationSearch] = useState("");
+const [showAllAllocations, setShowAllAllocations] = useState(false);
   // Delivery management
-const [deliveries, setDeliveries] = useState([]);
-const [deliveriesLoading, setDeliveriesLoading] = useState(true);
-const [deliveriesError, setDeliveriesError] = useState("");
-const [unassignedAllocations, setUnassignedAllocations] = useState([]);
-const [unassignedLoading, setUnassignedLoading] = useState(true);
-const [unassignedError, setUnassignedError] = useState("");
-const [selectedDeliveryAllocation, setSelectedDeliveryAllocation] = useState(null);
-const [assigningDelivery, setAssigningDelivery] = useState(false);
-const [deliveryAssignmentSuccess, setDeliveryAssignmentSuccess] = useState("");
-const [deliveryAssignmentError, setDeliveryAssignmentError] = useState("");
-const [updatingDeliveryId, setUpdatingDeliveryId] = useState(null);
-const [deliveryStatusSuccess, setDeliveryStatusSuccess] = useState("");
-const [deliveryStatusError, setDeliveryStatusError] = useState("");
-const [deliveryForm, setDeliveryForm] = useState({
-  deliveryDate: "",
-  deliveryPerson: "",
-  deliveryPhone: "",
-  notes: ""
-});
+  const [deliveries, setDeliveries] = useState([]);
+  const [deliverySearch, setDeliverySearch] = useState("");
+  const [showAllDeliveries, setShowAllDeliveries] = useState(false);
+  const [deliveriesLoading, setDeliveriesLoading] = useState(true);
+  const [deliveriesError, setDeliveriesError] = useState("");
+  const [unassignedAllocations, setUnassignedAllocations] = useState([]);
+  const [unassignedLoading, setUnassignedLoading] = useState(true);
+  const [unassignedError, setUnassignedError] = useState("");
+  const [selectedDeliveryAllocation, setSelectedDeliveryAllocation] = useState(null);
+  const [assigningDelivery, setAssigningDelivery] = useState(false);
+  const [deliveryAssignmentSuccess, setDeliveryAssignmentSuccess] = useState("");
+  const [deliveryAssignmentError, setDeliveryAssignmentError] = useState("");
+  const [updatingDeliveryId, setUpdatingDeliveryId] = useState(null);
+  const [deliveryStatusSuccess, setDeliveryStatusSuccess] = useState("");
+  const [deliveryStatusError, setDeliveryStatusError] = useState("");
+  const [deliveryForm, setDeliveryForm] = useState({
+    deliveryDate: "",
+    deliveryPerson: "",
+    deliveryPhone: "",
+    notes: ""
+  });
 
 
   const fetchOrganizations = async () => {
@@ -46,10 +54,10 @@ const [deliveryForm, setDeliveryForm] = useState({
       const response = await fetch(
         "http://localhost:5000/api/admin/organizations",
         {
-    headers: {
-      Authorization: `Bearer ${user.token}`
-    }
-  }
+          headers: {
+            Authorization: `Bearer ${user.token}`
+          }
+        }
       );
 
       const data = await response.json();
@@ -68,230 +76,232 @@ const [deliveryForm, setDeliveryForm] = useState({
   };
   const fetchDeliveries = async () => {
     try {
-        setDeliveriesLoading(true);
-        setDeliveriesError("");
+      setDeliveriesLoading(true);
+      setDeliveriesError("");
 
-        const response = await fetch(
-            "http://localhost:5000/api/admin/deliveries",
-            { cache: "no-store",
-              headers: {
+      const response = await fetch(
+        "http://localhost:5000/api/admin/deliveries",
+        {
+          cache: "no-store",
+          headers: {
             Authorization: `Bearer ${user.token}`
+          }
         }
-             }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.message || "Failed to load deliveries"
         );
+      }
 
-        const data = await response.json();
-
-        if (!response.ok) {
-            throw new Error(
-                data.message || "Failed to load deliveries"
-            );
-        }
-
-        setDeliveries(data);
+      setDeliveries(data);
     } catch (error) {
-        console.error("Admin deliveries error:", error);
-        setDeliveriesError(error.message);
+      console.error("Admin deliveries error:", error);
+      setDeliveriesError(error.message);
     } finally {
-        setDeliveriesLoading(false);
+      setDeliveriesLoading(false);
     }
-};
-const fetchUnassignedAllocations = async () => {
+  };
+  const fetchUnassignedAllocations = async () => {
     try {
-        setUnassignedLoading(true);
-        setUnassignedError("");
+      setUnassignedLoading(true);
+      setUnassignedError("");
 
-        const response = await fetch(
-            "http://localhost:5000/api/admin/unassigned-deliveries",
-            { cache: "no-store",
-              headers: {
-      Authorization: `Bearer ${user.token}`
-    }
-             }
-        );
-
-        const data = await response.json();
-
-        if (!response.ok) {
-            throw new Error(
-                data.message || "Failed to load unassigned allocations"
-            );
+      const response = await fetch(
+        "http://localhost:5000/api/admin/unassigned-deliveries",
+        {
+          cache: "no-store",
+          headers: {
+            Authorization: `Bearer ${user.token}`
+          }
         }
+      );
 
-        setUnassignedAllocations(data);
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.message || "Failed to load unassigned allocations"
+        );
+      }
+
+      setUnassignedAllocations(data);
     } catch (error) {
-        console.error("Unassigned allocations error:", error);
-        setUnassignedError(error.message);
+      console.error("Unassigned allocations error:", error);
+      setUnassignedError(error.message);
     } finally {
-        setUnassignedLoading(false);
+      setUnassignedLoading(false);
     }
-};
-const handleAssignDelivery = async () => {
-  if (!selectedDeliveryAllocation || assigningDelivery) {
-    return;
-  }
+  };
+  const handleAssignDelivery = async () => {
+    if (!selectedDeliveryAllocation || assigningDelivery) {
+      return;
+    }
 
-  setDeliveryAssignmentSuccess("");
-  setDeliveryAssignmentError("");
+    setDeliveryAssignmentSuccess("");
+    setDeliveryAssignmentError("");
 
-  const { deliveryDate, deliveryPerson, deliveryPhone, notes } = deliveryForm;
+    const { deliveryDate, deliveryPerson, deliveryPhone, notes } = deliveryForm;
 
-  if (!deliveryDate || !deliveryPerson.trim() || !deliveryPhone.trim()) {
-    setDeliveryAssignmentError(
-      "Delivery date, delivery person and phone number are required."
-    );
-    return;
-  }
-
-  if (!/^[0-9]{10}$/.test(deliveryPhone.trim())) {
-    setDeliveryAssignmentError("Enter a valid 10-digit phone number.");
-    return;
-  }
-
-  const pickupLocation = selectedDeliveryAllocation.pickupLocation?.trim();
-  const dropLocation = selectedDeliveryAllocation.dropLocation?.trim();
-
-  if (!pickupLocation || !dropLocation) {
-    setDeliveryAssignmentError(
-      "Pickup and drop locations are required."
-    );
-    return;
-  }
-
-  try {
-    setAssigningDelivery(true);
-
-    const response = await fetch(
-      "http://localhost:5000/api/admin/deliveries",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${user.token}`
-        },
-        body: JSON.stringify({
-          allocationId: selectedDeliveryAllocation.allocationId,
-          deliveryDate: deliveryDate.replace("T", " "),
-          pickupLocation,
-          dropLocation,
-          deliveryPerson: deliveryPerson.trim(),
-          deliveryPhone: deliveryPhone.trim(),
-          notes: notes.trim()
-        })
-      }
-    );
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(
-        data.message || "Failed to assign delivery."
+    if (!deliveryDate || !deliveryPerson.trim() || !deliveryPhone.trim()) {
+      setDeliveryAssignmentError(
+        "Delivery date, delivery person and phone number are required."
       );
+      return;
     }
 
-    setDeliveryAssignmentSuccess(
-      `Delivery #${data.deliveryId} assigned successfully.`
-    );
+    if (!/^[0-9]{10}$/.test(deliveryPhone.trim())) {
+      setDeliveryAssignmentError("Enter a valid 10-digit phone number.");
+      return;
+    }
 
-    setSelectedDeliveryAllocation(null);
-    setDeliveryForm({
-      deliveryDate: "",
-      deliveryPerson: "",
-      deliveryPhone: "",
-      notes: ""
-    });
+    const pickupLocation = selectedDeliveryAllocation.pickupLocation?.trim();
+    const dropLocation = selectedDeliveryAllocation.dropLocation?.trim();
 
-    await Promise.all([
-      fetchDeliveries(),
-      fetchUnassignedAllocations()
-    ]);
-  } catch (error) {
-    console.error("Delivery assignment error:", error);
-    setDeliveryAssignmentError(error.message);
-  } finally {
-    setAssigningDelivery(false);
-  }
-};
-const getNextDeliveryStatus = (status) => {
-  switch (status) {
-    case "ASSIGNED":
-      return "PICKED_UP";
-
-    case "PICKED_UP":
-      return "IN_TRANSIT";
-
-    case "IN_TRANSIT":
-      return "DELIVERED";
-
-    default:
-      return null;
-  }
-};
-const handleUpdateDeliveryStatus = async (delivery) => {
-  const nextStatus = getNextDeliveryStatus(delivery.status);
-
-  if (!nextStatus || updatingDeliveryId !== null) {
-    return;
-  }
-
-  setDeliveryStatusSuccess("");
-  setDeliveryStatusError("");
-
-  const confirmed = window.confirm(
-    `Change Delivery #${delivery.deliveryId} from ${delivery.status} to ${nextStatus}?`
-  );
-
-  if (!confirmed) {
-    return;
-  }
-
-  try {
-    setUpdatingDeliveryId(delivery.deliveryId);
-
-    const response = await fetch(
-      `http://localhost:5000/api/admin/deliveries/${delivery.deliveryId}/status`,
-      {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${user.token}`
-        },
-        body: JSON.stringify({
-          status: nextStatus
-        })
-      }
-    );
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(
-        data.message || "Failed to update delivery status."
+    if (!pickupLocation || !dropLocation) {
+      setDeliveryAssignmentError(
+        "Pickup and drop locations are required."
       );
+      return;
     }
 
-    setDeliveryStatusSuccess(
-      `Delivery #${delivery.deliveryId} updated to ${nextStatus.replace("_", " ")}.`
+    try {
+      setAssigningDelivery(true);
+
+      const response = await fetch(
+        "http://localhost:5000/api/admin/deliveries",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${user.token}`
+          },
+          body: JSON.stringify({
+            allocationId: selectedDeliveryAllocation.allocationId,
+            deliveryDate: deliveryDate.replace("T", " "),
+            pickupLocation,
+            dropLocation,
+            deliveryPerson: deliveryPerson.trim(),
+            deliveryPhone: deliveryPhone.trim(),
+            notes: notes.trim()
+          })
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.message || "Failed to assign delivery."
+        );
+      }
+
+      setDeliveryAssignmentSuccess(
+        `Delivery #${data.deliveryId} assigned successfully.`
+      );
+
+      setSelectedDeliveryAllocation(null);
+      setDeliveryForm({
+        deliveryDate: "",
+        deliveryPerson: "",
+        deliveryPhone: "",
+        notes: ""
+      });
+
+      await Promise.all([
+        fetchDeliveries(),
+        fetchUnassignedAllocations()
+      ]);
+    } catch (error) {
+      console.error("Delivery assignment error:", error);
+      setDeliveryAssignmentError(error.message);
+    } finally {
+      setAssigningDelivery(false);
+    }
+  };
+  const getNextDeliveryStatus = (status) => {
+    switch (status) {
+      case "ASSIGNED":
+        return "PICKED_UP";
+
+      case "PICKED_UP":
+        return "IN_TRANSIT";
+
+      case "IN_TRANSIT":
+        return "DELIVERED";
+
+      default:
+        return null;
+    }
+  };
+  const handleUpdateDeliveryStatus = async (delivery) => {
+    const nextStatus = getNextDeliveryStatus(delivery.status);
+
+    if (!nextStatus || updatingDeliveryId !== null) {
+      return;
+    }
+
+    setDeliveryStatusSuccess("");
+    setDeliveryStatusError("");
+
+    const confirmed = window.confirm(
+      `Change Delivery #${delivery.deliveryId} from ${delivery.status} to ${nextStatus}?`
     );
 
-    await fetchDeliveries();
-  } catch (error) {
-    console.error("Delivery status update error:", error);
-    setDeliveryStatusError(error.message);
-  } finally {
-    setUpdatingDeliveryId(null);
-  }
-};
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      setUpdatingDeliveryId(delivery.deliveryId);
+
+      const response = await fetch(
+        `http://localhost:5000/api/admin/deliveries/${delivery.deliveryId}/status`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${user.token}`
+          },
+          body: JSON.stringify({
+            status: nextStatus
+          })
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.message || "Failed to update delivery status."
+        );
+      }
+
+      setDeliveryStatusSuccess(
+        `Delivery #${delivery.deliveryId} updated to ${nextStatus.replace("_", " ")}.`
+      );
+
+      await fetchDeliveries();
+    } catch (error) {
+      console.error("Delivery status update error:", error);
+      setDeliveryStatusError(error.message);
+    } finally {
+      setUpdatingDeliveryId(null);
+    }
+  };
 
   useEffect(() => {
     fetchOrganizations();
   }, []);
   useEffect(() => {
     fetchDeliveries();
-}, []);
-useEffect(() => {
+  }, []);
+  useEffect(() => {
     fetchUnassignedAllocations();
-}, []);
+  }, []);
   useEffect(() => {
     const fetchPendingAllocations = async () => {
       try {
@@ -300,11 +310,11 @@ useEffect(() => {
 
         const response = await fetch(
           "http://localhost:5000/api/admin/pending-allocations",
-           {
-    headers: {
-      Authorization: `Bearer ${user.token}`
-    }
-  }
+          {
+            headers: {
+              Authorization: `Bearer ${user.token}`
+            }
+          }
         );
 
         const data = await response.json();
@@ -354,7 +364,7 @@ useEffect(() => {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-              Authorization: `Bearer ${user.token}`
+            Authorization: `Bearer ${user.token}`
           },
           body: JSON.stringify({
             accountType,
@@ -434,9 +444,11 @@ useEffect(() => {
 
       const refreshResponse = await fetch(
         "http://localhost:5000/api/admin/pending-allocations",
-        { cache: "no-store",headers: {
-      Authorization: `Bearer ${user.token}`
-    } }
+        {
+          cache: "no-store", headers: {
+            Authorization: `Bearer ${user.token}`
+          }
+        }
       );
 
       if (!refreshResponse.ok) {
@@ -481,6 +493,33 @@ useEffect(() => {
       accountType: "NGO",
     })),
   ];
+  const filteredOrganizations = [...allOrganizations]
+    .sort((a, b) => {
+      const dateDifference =
+        new Date(b.registrationDate).getTime() -
+        new Date(a.registrationDate).getTime();
+
+      if (Number.isFinite(dateDifference) && dateDifference !== 0) {
+        return dateDifference;
+      }
+
+      return Number(b.organizationId) - Number(a.organizationId);
+    })
+    .filter((organization) => {
+      const search = organizationSearch.trim().toLowerCase();
+
+      if (!search) return true;
+
+      return (
+        String(organization.name ?? "").toLowerCase().includes(search) ||
+        String(organization.accountType ?? "").toLowerCase().includes(search) ||
+        String(organization.organizationId ?? "").includes(search)
+      );
+    });
+
+  const visibleOrganizations = showAllOrganizations
+    ? filteredOrganizations
+    : filteredOrganizations.slice(0, 5);
 
   const pendingCount = allOrganizations.filter(
     (organization) => organization.status === "PENDING"
@@ -494,6 +533,62 @@ useEffect(() => {
     (organization) => organization.status === "BLACKLISTED"
   ).length;
 
+
+  // Filtering for Allocations Awaiting Delivery
+  const filteredUnassigned = [...unassignedAllocations]
+    .sort((a, b) => Number(b.allocationId) - Number(a.allocationId))
+    .filter((allocation) => {
+      const search = unassignedSearch.trim().toLowerCase();
+
+      return (
+        String(allocation.allocationId ?? "").includes(search) ||
+        String(allocation.itemName ?? "").toLowerCase().includes(search) ||
+        String(allocation.donorName ?? "").toLowerCase().includes(search) ||
+        String(allocation.ngoName ?? "").toLowerCase().includes(search)
+      );
+    });
+
+  const visibleUnassigned = showAllUnassigned
+    ? filteredUnassigned
+    : filteredUnassigned.slice(0, 5);
+
+  // Delivery Management: sort newest first and filter search results
+  const filteredDeliveries = [...deliveries]
+    .sort((a, b) => Number(b.deliveryId) - Number(a.deliveryId))
+    .filter((delivery) => {
+      const search = deliverySearch.trim().toLowerCase();
+
+      return (
+        String(delivery.deliveryId ?? "").includes(search) ||
+        String(delivery.allocationId ?? "").includes(search) ||
+        String(delivery.itemName ?? "").toLowerCase().includes(search) ||
+        String(delivery.donorName ?? "").toLowerCase().includes(search) ||
+        String(delivery.ngoName ?? "").toLowerCase().includes(search) ||
+        String(delivery.deliveryPerson ?? "").toLowerCase().includes(search) ||
+        String(delivery.status ?? "").toLowerCase().includes(search)
+      );
+    });
+
+  const visibleDeliveries = showAllDeliveries
+    ? filteredDeliveries
+    : filteredDeliveries.slice(0, 5);
+  const filteredAllocations = [...pendingAllocations]
+  .sort((a, b) => Number(b.acceptanceId) - Number(a.acceptanceId))
+  .filter((allocation) => {
+    const search = allocationSearch.trim().toLowerCase();
+
+    return (
+      String(allocation.itemName ?? "").toLowerCase().includes(search) ||
+      String(allocation.donorName ?? "").toLowerCase().includes(search) ||
+      String(allocation.ngoName ?? "").toLowerCase().includes(search) ||
+      String(allocation.acceptanceId ?? "").includes(search) ||
+      String(allocation.batchId ?? "").includes(search)
+    );
+  });
+
+const visibleAllocations = showAllAllocations
+  ? filteredAllocations
+  : filteredAllocations.slice(0, 5);  
   return (
     <div className="admin-page">
 
@@ -578,12 +673,40 @@ useEffect(() => {
               </h2>
             </div>
 
-            <button
-              className="refresh-button"
-              onClick={fetchOrganizations}
-            >
-              Refresh
-            </button>
+            <div className="admin-panel-actions">
+              <button
+                type="button"
+                className="refresh-button"
+                onClick={() => setShowAllOrganizations((previous) => !previous)}
+              >
+                {showAllOrganizations ? "Show less" : "View all"}
+              </button>
+
+              <button
+                type="button"
+                className="refresh-button"
+                onClick={fetchOrganizations}
+              >
+                Refresh
+              </button>
+            </div>
+            <div className="admin-search-toolbar">
+              <input
+                type="search"
+                className="admin-search-input"
+                placeholder="Search by name, Donor, NGO, or ID..."
+                aria-label="Search registered organizations"
+                value={organizationSearch}
+                onChange={(event) => {
+                  setOrganizationSearch(event.target.value);
+                  setShowAllOrganizations(true);
+                }}
+              />
+
+              <span className="admin-search-count">
+                {filteredOrganizations.length} organization(s)
+              </span>
+            </div>
 
           </div>
 
@@ -621,7 +744,7 @@ useEffect(() => {
 
                 <tbody>
 
-                  {allOrganizations.map((organization) => (
+                  {visibleOrganizations.map((organization) => (
 
                     <tr
                       key={`${organization.accountType}-${organization.organizationId}`}
@@ -752,18 +875,52 @@ useEffect(() => {
               <span>FOOD REDISTRIBUTION</span>
               <h2>Pending food allocations</h2>
             </div>
-          </div>
-            {allocationSuccess && (
-    <div className="admin-allocation-success" role="status">
-      {allocationSuccess}
-    </div>
-  )}
+            <div className="admin-panel-actions">
+  <button
+    type="button"
+    className="refresh-button"
+    onClick={() => setShowAllAllocations((previous) => !previous)}
+  >
+    {showAllAllocations ? "Show less" : "View all"}
+  </button>
 
-  {allocationActionError && (
-    <div className="admin-allocation-error" role="alert">
-      {allocationActionError}
-    </div>
-  )}
+  <button
+    type="button"
+    className="refresh-button"
+    onClick={() => window.location.reload()}
+  >
+    Refresh
+  </button>
+</div>
+          </div>
+          <div className="admin-search-toolbar">
+  <input
+    type="search"
+    className="admin-search-input"
+    placeholder="Search food, donor, NGO, batch or ID..."
+    aria-label="Search pending food allocations"
+    value={allocationSearch}
+    onChange={(event) => {
+      setAllocationSearch(event.target.value);
+      setShowAllAllocations(true);
+    }}
+  />
+
+  <span className="admin-search-count">
+    {filteredAllocations.length} pending allocation(s)
+  </span>
+</div>
+          {allocationSuccess && (
+            <div className="admin-allocation-success" role="status">
+              {allocationSuccess}
+            </div>
+          )}
+
+          {allocationActionError && (
+            <div className="admin-allocation-error" role="alert">
+              {allocationActionError}
+            </div>
+          )}
 
           {allocationsLoading ? (
             <div className="admin-loading">
@@ -793,7 +950,7 @@ useEffect(() => {
                 </thead>
 
                 <tbody>
-                  {pendingAllocations.map((allocation) => (
+                  {visibleAllocations.map((allocation) => (
                     <tr key={allocation.acceptanceId}>
                       <td>
                         <strong>{allocation.itemName}</strong>
@@ -858,329 +1015,384 @@ useEffect(() => {
         </section>
         {/* UNASSIGNED DELIVERY ALLOCATIONS */}
 
-<section className="admin-panel">
-  <div className="admin-panel-heading">
-    <div>
-      <span>DELIVERY ASSIGNMENT</span>
-      <h2>Allocations awaiting delivery</h2>
-    </div>
+        <section className="admin-panel">
+          <div className="admin-panel-heading">
+            <div>
+              <span>DELIVERY ASSIGNMENT</span>
+              <h2>Allocations awaiting delivery</h2>
+            </div>
 
-    <button
-      type="button"
-      className="refresh-button"
-      onClick={fetchUnassignedAllocations}
-    >
-      Refresh
-    </button>
-  </div>
-  {deliveryAssignmentSuccess && (
-  <div className="admin-allocation-success" role="status">
-    {deliveryAssignmentSuccess}
-  </div>
-)}
+            <div className="admin-panel-actions">
+              <button
+                type="button"
+                className="refresh-button"
+                onClick={() =>
+                  setShowAllUnassigned((previous) => !previous)
+                }
+              >
+                {showAllUnassigned ? "Show less" : "View all"}
+              </button>
 
-{deliveryAssignmentError && (
-  <div className="admin-allocation-error" role="alert">
-    {deliveryAssignmentError}
-  </div>
-)}
+              <button
+                type="button"
+                className="refresh-button"
+                onClick={fetchUnassignedAllocations}
+              >
+                Refresh
+              </button>
+            </div>
+          </div>
+          <div className="admin-search-toolbar">
+            <input
+              type="search"
+              className="admin-search-input"
+              placeholder="Search allocation ID, food, donor or NGO..."
+              aria-label="Search allocations awaiting delivery"
+              value={unassignedSearch}
+              onChange={(event) => {
+                setUnassignedSearch(event.target.value);
+                setShowAllUnassigned(true);
+              }}
+            />
 
-  {unassignedLoading ? (
-    <div className="admin-loading">
-      Loading unassigned allocations...
-    </div>
-  ) : unassignedError ? (
-    <div className="admin-error">
-      {unassignedError}
-    </div>
-  ) : unassignedAllocations.length === 0 ? (
-    <div className="admin-empty">
-      All allocated food has been assigned for delivery.
-    </div>
-  ) : (
-    <div className="organization-table-wrapper">
-      <table className="organization-table">
-        <thead>
-          <tr>
-            <th>Allocation</th>
-            <th>Food</th>
-            <th>Donor</th>
-            <th>NGO</th>
-            <th>Quantity</th>
-            <th>Action</th>
-          </tr>
-        </thead>
+            <span className="admin-search-count">
+              {filteredUnassigned.length} allocation(s)
+            </span>
+          </div>
+          {deliveryAssignmentSuccess && (
+            <div className="admin-allocation-success" role="status">
+              {deliveryAssignmentSuccess}
+            </div>
+          )}
 
-        <tbody>
-          {unassignedAllocations.map((allocation) => (
-            <tr key={allocation.allocationId}>
-              <td>
-                <strong>#{allocation.allocationId}</strong>
-              </td>
+          {deliveryAssignmentError && (
+            <div className="admin-allocation-error" role="alert">
+              {deliveryAssignmentError}
+            </div>
+          )}
 
-              <td>{allocation.itemName}</td>
+          {unassignedLoading ? (
+            <div className="admin-loading">
+              Loading unassigned allocations...
+            </div>
+          ) : unassignedError ? (
+            <div className="admin-error">
+              {unassignedError}
+            </div>
+          ) : unassignedAllocations.length === 0 ? (
+            <div className="admin-empty">
+              All allocated food has been assigned for delivery.
+            </div>
+          ) : (
+            <div className="organization-table-wrapper">
+              <table className="organization-table">
+                <thead>
+                  <tr>
+                    <th>Allocation</th>
+                    <th>Food</th>
+                    <th>Donor</th>
+                    <th>NGO</th>
+                    <th>Quantity</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
 
-              <td>{allocation.donorName}</td>
+                <tbody>
+                  {visibleUnassigned.map((allocation) => (
+                    <tr key={allocation.allocationId}>
+                      <td>
+                        <strong>#{allocation.allocationId}</strong>
+                      </td>
 
-              <td>{allocation.ngoName}</td>
+                      <td>{allocation.itemName}</td>
 
-              <td>
-                {allocation.quantity}{" "}
-                {allocation.unit?.toLowerCase()}
-              </td>
-              <td>
-  <button
-    type="button"
-    className="admin-assign-delivery-button"
-    onClick={() => setSelectedDeliveryAllocation(allocation)}
-  >
-    Assign Delivery
-  </button>
-</td>
-              
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  )}
-</section>
-{/* DELIVERY ASSIGNMENT FORM */}
+                      <td>{allocation.donorName}</td>
 
-{selectedDeliveryAllocation && (
-  <div className="admin-delivery-form">
-    <h3>
-      Assign Delivery — Allocation #{selectedDeliveryAllocation.allocationId}
-    </h3>
+                      <td>{allocation.ngoName}</td>
 
-    <p>
-      {selectedDeliveryAllocation.itemName} ·{" "}
-      {selectedDeliveryAllocation.quantity}{" "}
-      {selectedDeliveryAllocation.unit.toLowerCase()}
-    </p>
+                      <td>
+                        {allocation.quantity}{" "}
+                        {allocation.unit?.toLowerCase()}
+                      </td>
+                      <td>
+                        <button
+                          type="button"
+                          className="admin-assign-delivery-button"
+                          onClick={() => setSelectedDeliveryAllocation(allocation)}
+                        >
+                          Assign Delivery
+                        </button>
+                      </td>
 
-    <div className="admin-delivery-form-grid">
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+        {/* DELIVERY ASSIGNMENT FORM */}
 
-      <label>
-        Pickup Location
-        <input
-          type="text"
-          value={selectedDeliveryAllocation.pickupLocation || ""}
-          readOnly
-        />
-      </label>
+        {selectedDeliveryAllocation && (
+          <div className="admin-delivery-form">
+            <h3>
+              Assign Delivery — Allocation #{selectedDeliveryAllocation.allocationId}
+            </h3>
 
-      <label>
-        Drop Location
-        <input
-          type="text"
-          value={selectedDeliveryAllocation.dropLocation || ""}
-          readOnly
-        />
-      </label>
+            <p>
+              {selectedDeliveryAllocation.itemName} ·{" "}
+              {selectedDeliveryAllocation.quantity}{" "}
+              {selectedDeliveryAllocation.unit.toLowerCase()}
+            </p>
 
-      <label>
-        Delivery Date
-        <input
-          type="datetime-local"
-          value={deliveryForm.deliveryDate}
-          onChange={(event) =>
-            setDeliveryForm((previous) => ({
-              ...previous,
-              deliveryDate: event.target.value
-            }))
-          }
-        />
-      </label>
+            <div className="admin-delivery-form-grid">
 
-      <label>
-        Delivery Person
-        <input
-          type="text"
-          placeholder="Enter delivery person's name"
-          value={deliveryForm.deliveryPerson}
-          onChange={(event) =>
-            setDeliveryForm((previous) => ({
-              ...previous,
-              deliveryPerson: event.target.value
-            }))
-          }
-        />
-      </label>
+              <label>
+                Pickup Location
+                <input
+                  type="text"
+                  value={selectedDeliveryAllocation.pickupLocation || ""}
+                  readOnly
+                />
+              </label>
 
-      <label>
-        Delivery Phone
-        <input
-          type="tel"
-          placeholder="10-digit phone number"
-          value={deliveryForm.deliveryPhone}
-          onChange={(event) =>
-            setDeliveryForm((previous) => ({
-              ...previous,
-              deliveryPhone: event.target.value
-            }))
-          }
-        />
-      </label>
+              <label>
+                Drop Location
+                <input
+                  type="text"
+                  value={selectedDeliveryAllocation.dropLocation || ""}
+                  readOnly
+                />
+              </label>
 
-      <label>
-        Notes (optional)
-        <input
-          type="text"
-          placeholder="Delivery instructions"
-          value={deliveryForm.notes}
-          onChange={(event) =>
-            setDeliveryForm((previous) => ({
-              ...previous,
-              notes: event.target.value
-            }))
-          }
-        />
-      </label>
+              <label>
+                Delivery Date
+                <input
+                  type="datetime-local"
+                  value={deliveryForm.deliveryDate}
+                  onChange={(event) =>
+                    setDeliveryForm((previous) => ({
+                      ...previous,
+                      deliveryDate: event.target.value
+                    }))
+                  }
+                />
+              </label>
 
-    </div>
+              <label>
+                Delivery Person
+                <input
+                  type="text"
+                  placeholder="Enter delivery person's name"
+                  value={deliveryForm.deliveryPerson}
+                  onChange={(event) =>
+                    setDeliveryForm((previous) => ({
+                      ...previous,
+                      deliveryPerson: event.target.value
+                    }))
+                  }
+                />
+              </label>
 
-    <div className="admin-delivery-form-actions">
-      <button
-        type="button"
-        className="refresh-button"
-        onClick={() => setSelectedDeliveryAllocation(null)}
-      >
-        Cancel
-      </button>
+              <label>
+                Delivery Phone
+                <input
+                  type="tel"
+                  placeholder="10-digit phone number"
+                  value={deliveryForm.deliveryPhone}
+                  onChange={(event) =>
+                    setDeliveryForm((previous) => ({
+                      ...previous,
+                      deliveryPhone: event.target.value
+                    }))
+                  }
+                />
+              </label>
 
-      <button
-  type="button"
-  className="admin-assign-delivery-button"
-  onClick={handleAssignDelivery}
-  disabled={assigningDelivery}
->
-  {assigningDelivery ? "Assigning..." : "Confirm Assignment"}
-</button>
-    </div>
-  </div>
-)}
+              <label>
+                Notes (optional)
+                <input
+                  type="text"
+                  placeholder="Delivery instructions"
+                  value={deliveryForm.notes}
+                  onChange={(event) =>
+                    setDeliveryForm((previous) => ({
+                      ...previous,
+                      notes: event.target.value
+                    }))
+                  }
+                />
+              </label>
+
+            </div>
+
+            <div className="admin-delivery-form-actions">
+              <button
+                type="button"
+                className="refresh-button"
+                onClick={() => setSelectedDeliveryAllocation(null)}
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                className="admin-assign-delivery-button"
+                onClick={handleAssignDelivery}
+                disabled={assigningDelivery}
+              >
+                {assigningDelivery ? "Assigning..." : "Confirm Assignment"}
+              </button>
+            </div>
+          </div>
+        )}
         {/* DELIVERY MANAGEMENT */}
 
-<section className="admin-panel">
-  <div className="admin-panel-heading">
-    <div>
-      <span>FOOD DISTRIBUTION</span>
-      <h2>Delivery management</h2>
-    </div>
+        <section className="admin-panel">
+          <div className="admin-panel-heading">
+            <div>
+              <span>FOOD DISTRIBUTION</span>
+              <h2>Delivery management</h2>
+            </div>
 
-    <button
-      type="button"
-      className="refresh-button"
-      onClick={fetchDeliveries}
-    >
-      Refresh
-    </button>
-  </div>
-  {deliveryStatusSuccess && (
-  <div className="admin-allocation-success" role="status">
-    {deliveryStatusSuccess}
-  </div>
-)}
+            <div className="admin-panel-actions">
+              <button
+                type="button"
+                className="refresh-button"
+                onClick={() => setShowAllDeliveries((previous) => !previous)}
+              >
+                {showAllDeliveries ? "Show less" : "View all"}
+              </button>
 
-{deliveryStatusError && (
-  <div className="admin-allocation-error" role="alert">
-    {deliveryStatusError}
-  </div>
-)}
+              <button
+                type="button"
+                className="refresh-button"
+                onClick={fetchDeliveries}
+              >
+                Refresh
+              </button>
+            </div>
+          </div>
+          <div className="admin-search-toolbar">
+  <input
+    type="search"
+    className="admin-search-input"
+    placeholder="Search delivery ID, food, donor, NGO or status..."
+    aria-label="Search deliveries"
+    value={deliverySearch}
+    onChange={(event) => {
+      setDeliverySearch(event.target.value);
+      setShowAllDeliveries(true);
+    }}
+  />
 
-  {deliveriesLoading ? (
-    <div className="admin-loading">
-      Loading deliveries...
-    </div>
-  ) : deliveriesError ? (
-    <div className="admin-error">
-      {deliveriesError}
-    </div>
-  ) : deliveries.length === 0 ? (
-    <div className="admin-empty">
-      No deliveries have been assigned yet.
-    </div>
-  ) : (
-    <div className="organization-table-wrapper">
-      <table className="organization-table">
-        <thead>
-          <tr>
-            <th>Delivery</th>
-            <th>Food</th>
-            <th>Donor</th>
-            <th>NGO</th>
-            <th>Quantity</th>
-            <th>Delivery person</th>
-            <th>Status</th>
-            <th>Action</th>
-          </tr>
-        </thead>
+  <span className="admin-search-count">
+    {filteredDeliveries.length} delivery(s)
+  </span>
+</div>
+          {deliveryStatusSuccess && (
+            <div className="admin-allocation-success" role="status">
+              {deliveryStatusSuccess}
+            </div>
+          )}
 
-        <tbody>
-          {deliveries.map((delivery) => (
-            <tr key={delivery.deliveryId}>
-              <td>
-                <strong>#{delivery.deliveryId}</strong>
-                <span>
-                  Allocation #{delivery.allocationId}
-                </span>
-              </td>
+          {deliveryStatusError && (
+            <div className="admin-allocation-error" role="alert">
+              {deliveryStatusError}
+            </div>
+          )}
 
-              <td>{delivery.itemName}</td>
+          {deliveriesLoading ? (
+            <div className="admin-loading">
+              Loading deliveries...
+            </div>
+          ) : deliveriesError ? (
+            <div className="admin-error">
+              {deliveriesError}
+            </div>
+          ) : deliveries.length === 0 ? (
+            <div className="admin-empty">
+              No deliveries have been assigned yet.
+            </div>
+          ) : (
+            <div className="organization-table-wrapper">
+              <table className="organization-table">
+                <thead>
+                  <tr>
+                    <th>Delivery</th>
+                    <th>Food</th>
+                    <th>Donor</th>
+                    <th>NGO</th>
+                    <th>Quantity</th>
+                    <th>Delivery person</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
 
-              <td>{delivery.donorName}</td>
+                <tbody>
+                  {visibleDeliveries.map((delivery) => (
+                    <tr key={delivery.deliveryId}>
+                      <td>
+                        <strong>#{delivery.deliveryId}</strong>
+                        <span>
+                          Allocation #{delivery.allocationId}
+                        </span>
+                      </td>
 
-              <td>{delivery.ngoName}</td>
+                      <td>{delivery.itemName}</td>
 
-              <td>
-                {delivery.quantity}{" "}
-                {delivery.unit?.toLowerCase()}
-              </td>
+                      <td>{delivery.donorName}</td>
 
-              <td>
-                {delivery.deliveryPerson || "Not assigned"}
-              </td>
+                      <td>{delivery.ngoName}</td>
 
-              <td>
-                <span
-                  className={`status-badge ${
-                    delivery.status === "DELIVERED"
-                      ? "approved"
-                      : "pending"
-                  }`}
-                >
-                  {delivery.status}
-                </span>
-              </td>
-              <td>
-  {getNextDeliveryStatus(delivery.status) ? (
-    <button
-  type="button"
-  className="admin-assign-delivery-button"
-  onClick={() => handleUpdateDeliveryStatus(delivery)}
-  disabled={updatingDeliveryId !== null}
->
-  {updatingDeliveryId === delivery.deliveryId
-    ? "Updating..."
-    : `Mark as ${getNextDeliveryStatus(delivery.status).replaceAll("_", " ")}`}
-</button>
-  ) : (
-    <span className="no-action">
-      {delivery.status === "DELIVERED"
-        ? "Completed"
-        : "No action"}
-    </span>
-  )}
-</td>
-              
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  )}
-</section>
+                      <td>
+                        {delivery.quantity}{" "}
+                        {delivery.unit?.toLowerCase()}
+                      </td>
+
+                      <td>
+                        {delivery.deliveryPerson || "Not assigned"}
+                      </td>
+
+                      <td>
+                        <span
+                          className={`status-badge ${delivery.status === "DELIVERED"
+                            ? "approved"
+                            : "pending"
+                            }`}
+                        >
+                          {delivery.status}
+                        </span>
+                      </td>
+                      <td>
+                        {getNextDeliveryStatus(delivery.status) ? (
+                          <button
+                            type="button"
+                            className="admin-assign-delivery-button"
+                            onClick={() => handleUpdateDeliveryStatus(delivery)}
+                            disabled={updatingDeliveryId !== null}
+                          >
+                            {updatingDeliveryId === delivery.deliveryId
+                              ? "Updating..."
+                              : `Mark as ${getNextDeliveryStatus(delivery.status).replaceAll("_", " ")}`}
+                          </button>
+                        ) : (
+                          <span className="no-action">
+                            {delivery.status === "DELIVERED"
+                              ? "Completed"
+                              : "No action"}
+                          </span>
+                        )}
+                      </td>
+
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
 
       </main>
 
