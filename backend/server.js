@@ -73,6 +73,7 @@ app.get("/api/food-batches", async (req, res) => {
         ON fi.category_id = fc.category_id
     WHERE fb.status = 'AVAILABLE'
       AND GET_REMAINING_QUANTITY(fb.batch_id) > 0
+      AND fb.expiry_time > SYSDATE
       AND (:donorId IS NULL OR fb.donor_id = :donorId)
     ORDER BY fb.expiry_time
 `,
@@ -177,6 +178,33 @@ app.get("/api/ngo-requests/:ngoId", async (req, res) => {
         }
 
         connection = await getConnection();
+        // Automatically expire overdue requests that have not
+// received any donor acceptances or food allocations.
+await connection.execute(
+    `
+    UPDATE NGO_REQUEST nr
+    SET nr.status = 'EXPIRED'
+    WHERE nr.ngo_id = :ngoId
+      AND nr.status = 'PENDING'
+      AND nr.required_by < SYSDATE
+      AND NOT EXISTS (
+          SELECT 1
+          FROM REQUEST_ITEM ri
+          JOIN DONOR_ACCEPTANCE da
+              ON da.request_item_id = ri.request_item_id
+          WHERE ri.request_id = nr.request_id
+      )
+      AND NOT EXISTS (
+          SELECT 1
+          FROM REQUEST_ITEM ri
+          JOIN ALLOCATION a
+              ON a.request_item_id = ri.request_item_id
+          WHERE ri.request_id = nr.request_id
+      )
+    `,
+    { ngoId },
+    { autoCommit: true }
+);
 
         const result = await connection.execute(
             `
@@ -285,6 +313,29 @@ app.post("/api/ngo-requests", async (req, res) => {
         }
 
         connection = await getConnection();
+        // Reject requests if this food item has no unexpired,
+ // available batches with remaining quantity.
+const availableFood = await connection.execute(
+    `
+    SELECT COUNT(*)
+    FROM FOOD_BATCH fb
+    WHERE fb.item_id = :itemId
+      AND fb.status = 'AVAILABLE'
+      AND fb.expiry_time > SYSDATE
+      AND GET_REMAINING_QUANTITY(fb.batch_id) > 0
+      AND fb.unit = :unit
+    `,
+    {
+        itemId: Number(itemId),
+        unit
+    }
+);
+
+if (availableFood.rows[0][0] === 0) {
+    return res.status(400).json({
+        message: "This food is no longer available or has expired. Please refresh Available Food."
+    });
+}
 
         await connection.execute(
             `
@@ -2040,6 +2091,84 @@ app.get("/api/donors/:donorId/deliveries", async (req, res) => {
         return res.status(500).json({
             message: "Failed to fetch donor deliveries."
         });
+    } finally {
+        if (connection) {
+            await connection.close();
+        }
+    }
+});
+// Get NGO account details
+app.get(
+    "/api/ngos/:ngoId/account",
+    authenticateToken,
+    requireRole("NGO"),
+    async (req, res) => {
+    let connection;
+
+    try {
+        const ngoId = Number(req.params.ngoId);
+
+        if (!Number.isInteger(ngoId) || ngoId <= 0) {
+            return res.status(400).json({
+                message: "Invalid NGO ID"
+            });
+        }
+        if (Number(req.user.ngoId) !== ngoId) {
+    return res.status(403).json({
+        message: "You can only access your own NGO account details."
+    });
+}
+
+        connection = await getConnection();
+
+        const result = await connection.execute(
+            `
+            SELECT
+                n.NGO_NAME,
+                u.USERNAME,
+                u.ROLE,
+                u.STATUS AS ACCOUNT_STATUS,
+                n.EMAIL,
+                n.PHONE,
+                n.ADDRESS,
+                n.REGISTRATION_DATE,
+                n.STATUS AS NGO_STATUS
+            FROM NGO n
+            JOIN USER_ACCOUNT u
+                ON u.NGO_ID = n.NGO_ID
+            WHERE n.NGO_ID = :ngoId
+              AND u.ROLE = 'NGO'
+            `,
+            { ngoId }
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({
+                message: "NGO account not found"
+            });
+        }
+
+        const row = result.rows[0];
+
+        res.json({
+            organizationName: row[0],
+            username: row[1],
+            role: row[2],
+            accountStatus: row[3],
+            email: row[4],
+            phone: row[5],
+            address: row[6],
+            registrationDate: row[7],
+            approvalStatus: row[8]
+        });
+
+    } catch (error) {
+        console.error("NGO account details error:", error);
+
+        res.status(500).json({
+            message: "Failed to load NGO account details"
+        });
+
     } finally {
         if (connection) {
             await connection.close();
