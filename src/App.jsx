@@ -138,6 +138,7 @@ function App() {
         <NGODashboard
           onLogout={handleLogout}
           ngoId={user?.ngoId}
+          user={user}
         />
       )}
 

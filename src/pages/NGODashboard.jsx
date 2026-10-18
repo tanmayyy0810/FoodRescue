@@ -1,13 +1,21 @@
 import { useEffect, useState } from "react";
 import "./NGODashboard.css";
 
-function NGODashboard({ onLogout, ngoId }) {
+function NGODashboard({ onLogout, ngoId, user }) {
     const [requests, setRequests] = useState([]);
     const [batches, setBatches] = useState([]);
     const [loading, setLoading] = useState(true);
     const [deliveries, setDeliveries] = useState([]);
+    const [accountDetails, setAccountDetails] = useState(null);
+const [accountLoading, setAccountLoading] = useState(true);
+const [accountError, setAccountError] = useState("");
     const [deliveriesLoading, setDeliveriesLoading] = useState(true);
     const [deliveriesError, setDeliveriesError] = useState("");
+    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+    const navigateTo = (section) => {
+  setActiveSection(section);
+  setMobileMenuOpen(false);
+};
 
     const [activeSection, setActiveSection] = useState("dashboard");
 
@@ -93,6 +101,41 @@ function NGODashboard({ onLogout, ngoId }) {
             setDeliveriesLoading(false);
         }
     };
+    const loadAccountDetails = async () => {
+    if (!ngoId) {
+        setAccountLoading(false);
+        return;
+    }
+
+    try {
+        setAccountLoading(true);
+        setAccountError("");
+
+        const response = await fetch(
+            `http://localhost:5000/api/ngos/${ngoId}/account`,
+            {
+                headers: {
+                    Authorization: `Bearer ${user?.token}`
+                }
+            }
+        );
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(
+                data.message || "Failed to load account details"
+            );
+        }
+
+        setAccountDetails(data);
+    } catch (error) {
+        console.error("NGO account details error:", error);
+        setAccountError(error.message);
+    } finally {
+        setAccountLoading(false);
+    }
+};
 
     useEffect(() => {
         loadData();
@@ -101,6 +144,9 @@ function NGODashboard({ onLogout, ngoId }) {
     useEffect(() => {
         loadDeliveries();
     }, [ngoId]);
+    useEffect(() => {
+    loadAccountDetails();
+}, [ngoId, user?.token]);
 
     // DATE AND GREETING
 
@@ -140,9 +186,9 @@ function NGODashboard({ onLogout, ngoId }) {
             request[8] === "ALLOCATED"
     ).length;
 
-    const completedRequests = requests.filter(
-        (request) => request[8] === "COMPLETED"
-    ).length;
+    const completedDeliveries = deliveries.filter(
+    (delivery) => delivery.status === "DELIVERED"
+).length;
 
     // OPEN FOOD REQUEST FORM
 
@@ -437,8 +483,28 @@ function NGODashboard({ onLogout, ngoId }) {
         <div className="ngo-dashboard">
 
             {/* SIDEBAR */}
+            {mobileMenuOpen && (
+  <button
+    type="button"
+    className="ngo-mobile-backdrop"
+    aria-label="Close navigation menu"
+    onClick={() => setMobileMenuOpen(false)}
+  />
+)}
 
-            <aside className="ngo-sidebar">
+            <aside
+  className={`ngo-sidebar ${mobileMenuOpen ? "mobile-open" : ""}`}
+  id="ngo-mobile-navigation"
+  
+>
+    <button
+  type="button"
+  className="ngo-mobile-close-button"
+  aria-label="Close navigation menu"
+  onClick={() => setMobileMenuOpen(false)}
+>
+  ×
+</button>
 
                 <div className="ngo-dashboard-brand">
                     <div className="ngo-dashboard-logo">
@@ -462,9 +528,7 @@ function NGODashboard({ onLogout, ngoId }) {
                             ? "active"
                             : ""
                             }`}
-                        onClick={() =>
-                            setActiveSection("dashboard")
-                        }
+                        onClick={() => navigateTo("dashboard")}
                     >
                         <span className="ngo-nav-icon">
                             01
@@ -477,9 +541,7 @@ function NGODashboard({ onLogout, ngoId }) {
                             ? "active"
                             : ""
                             }`}
-                        onClick={() =>
-                            setActiveSection("requests")
-                        }
+                        onClick={() => navigateTo("requests")}
                     >
                         <span className="ngo-nav-icon">
                             02
@@ -492,9 +554,7 @@ function NGODashboard({ onLogout, ngoId }) {
                             ? "active"
                             : ""
                             }`}
-                        onClick={() =>
-                            setActiveSection("available")
-                        }
+                        onClick={() => navigateTo("available")}
                     >
                         <span className="ngo-nav-icon">
                             03
@@ -502,25 +562,15 @@ function NGODashboard({ onLogout, ngoId }) {
                         Available Food
                     </button>
 
-                    <button
-                        className="ngo-nav-item"
-                        onClick={() =>
-                            setActiveSection("requests")
-                        }
-                    >
-                        <span className="ngo-nav-icon">
-                            04
-                        </span>
-                        Allocations
-                    </button>
+                    
 
                     <button
                         className={`ngo-nav-item ${activeSection === "deliveries" ? "active" : ""
                             }`}
-                        onClick={() => setActiveSection("deliveries")}
+                        onClick={() => navigateTo("deliveries")}
                     >
                         <span className="ngo-nav-icon">
-                            05
+                            04
                         </span>
                         Deliveries
                     </button>
@@ -529,19 +579,18 @@ function NGODashboard({ onLogout, ngoId }) {
                         ACCOUNT
                     </p>
 
-                    <button className="ngo-nav-item">
-                        <span className="ngo-nav-icon">
-                            06
-                        </span>
-                        Organization
-                    </button>
+                    <button
+  type="button"
+  className={`ngo-nav-item ${
+    activeSection === "account" ? "active" : ""
+  }`}
+  onClick={() => navigateTo("account")}
+>
+  <span className="ngo-nav-icon">05</span>
+  Account Details
+</button>
 
-                    <button className="ngo-nav-item">
-                        <span className="ngo-nav-icon">
-                            07
-                        </span>
-                        Notifications
-                    </button>
+                    
 
                 </nav>
 
@@ -571,6 +620,20 @@ function NGODashboard({ onLogout, ngoId }) {
             {/* MAIN CONTENT */}
 
             <main className="ngo-main">
+                <div className="ngo-mobile-topbar">
+  <button
+    type="button"
+    className="ngo-mobile-menu-button"
+    aria-label="Open navigation menu"
+    aria-expanded={mobileMenuOpen}
+    aria-controls="ngo-mobile-navigation"
+    onClick={() => setMobileMenuOpen(true)}
+  >
+    ☰
+  </button>
+
+  <span>FoodRescue</span>
+</div>
 
                 <header className="ngo-dashboard-header">
 
@@ -620,8 +683,8 @@ function NGODashboard({ onLogout, ngoId }) {
 
                     <div className="ngo-stat-card warning">
                         <span>Completed</span>
-                        <strong>{completedRequests}</strong>
-                        <small>food received</small>
+                        <strong>{completedDeliveries}</strong>
+                        <small>successfully delivered</small>
                     </div>
 
                 </section>
@@ -960,6 +1023,79 @@ function NGODashboard({ onLogout, ngoId }) {
                         </div>
                     </section>
                 )}
+                {/* ACCOUNT DETAILS VIEW */}
+
+{activeSection === "account" && (
+  <section className="ngo-dashboard-card ngo-full-section">
+    <div className="ngo-card-heading">
+      <div>
+        <span>ACCOUNT INFORMATION</span>
+        <h2>Account Details</h2>
+      </div>
+    </div>
+
+    <div className="ngo-account-details">
+  {accountLoading ? (
+    <p>Loading account details...</p>
+  ) : accountError ? (
+    <p role="alert">{accountError}</p>
+  ) : accountDetails ? (
+    <>
+      <div>
+        <span>ORGANIZATION NAME</span>
+        <strong>{accountDetails.organizationName}</strong>
+      </div>
+
+      <div>
+        <span>USERNAME</span>
+        <strong>{accountDetails.username}</strong>
+      </div>
+
+      <div>
+        <span>ACCOUNT TYPE</span>
+        <strong>{accountDetails.role}</strong>
+      </div>
+
+      <div>
+        <span>ACCOUNT STATUS</span>
+        <strong>{accountDetails.accountStatus}</strong>
+      </div>
+
+      <div>
+        <span>EMAIL</span>
+        <strong>{accountDetails.email || "Not provided"}</strong>
+      </div>
+
+      <div>
+        <span>PHONE NUMBER</span>
+        <strong>{accountDetails.phone || "Not provided"}</strong>
+      </div>
+
+      <div>
+        <span>ADDRESS</span>
+        <strong>{accountDetails.address || "Not provided"}</strong>
+      </div>
+
+      <div>
+        <span>REGISTRATION DATE</span>
+        <strong>
+          {accountDetails.registrationDate
+            ? new Date(accountDetails.registrationDate).toLocaleDateString("en-IN")
+            : "Not available"}
+        </strong>
+      </div>
+
+      <div>
+        <span>APPROVAL STATUS</span>
+        <strong>{accountDetails.approvalStatus}</strong>
+      </div>
+    </>
+  ) : (
+    <p>Account information is unavailable.</p>
+  )}
+</div>
+  </section>
+)}
                 {/* INCOMING DELIVERIES VIEW */}
 
                 {activeSection === "deliveries" && (

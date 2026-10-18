@@ -124,7 +124,7 @@ function Login({ onBack, onRegister, onLogin }) {
                                 className={role === "DONOR" ? "active" : ""}
                                 onClick={() => setRole("DONOR")}
                             >
-                                <span>🏪</span>
+                                {/* <span>🏪</span> */}
                                 Donor
                             </button>
 
@@ -133,25 +133,25 @@ function Login({ onBack, onRegister, onLogin }) {
                                 className={role === "NGO" ? "active" : ""}
                                 onClick={() => setRole("NGO")}
                             >
-                                <span>🤝</span>
+                                {/* <span>🤝</span> */}
                                 NGO
                             </button>
 
-                            <button
+                            {/* <button
                                 type="button"
                                 className={role === "DELIVERY" ? "active" : ""}
                                 onClick={() => setRole("DELIVERY")}
                             >
-                                <span>🚚</span>
+                                {/* <span></span> 
                                 Delivery
-                            </button>
+                            </button> */}
 
                             <button
                                 type="button"
                                 className={role === "ADMIN" ? "active" : ""}
                                 onClick={() => setRole("ADMIN")}
                             >
-                                <span>⚙</span>
+                                {/* <span>⚙</span> */}
                                 Admin
                             </button>
 

@@ -1217,3 +1217,104 @@
         row-gap: 16px;
     }
 }
+/* Mobile navigation — desktop UI remains unchanged */
+
+.ngo-mobile-topbar,
+.ngo-mobile-close-button,
+.ngo-mobile-backdrop {
+  display: none;
+}
+
+@media (max-width: 650px) {
+  .ngo-mobile-topbar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 24px;
+    color: #173326;
+    font-size: 16px;
+    font-weight: 700;
+  }
+
+  .ngo-mobile-menu-button {
+    width: 40px;
+    height: 40px;
+    border: 1px solid #dce2dc;
+    background: #ffffff;
+    color: #173326;
+    font-size: 23px;
+    cursor: pointer;
+  }
+
+  .ngo-sidebar {
+    display: flex;
+    width: min(270px, 85vw);
+    transform: translateX(-100%);
+    transition: transform 0.25s ease;
+    z-index: 1101;
+    overflow-y: auto;
+  }
+
+  .ngo-sidebar.mobile-open {
+    transform: translateX(0);
+  }
+
+  .ngo-mobile-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 1100;
+    background: rgba(0, 0, 0, 0.45);
+    border: none;
+    cursor: pointer;
+  }
+
+  .ngo-mobile-close-button {
+    display: block;
+    align-self: flex-end;
+    margin-bottom: 12px;
+    padding: 4px 10px;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    background: transparent;
+    color: #ffffff;
+    font-size: 25px;
+    cursor: pointer;
+  }
+}
+/* NGO Account Details */
+
+.ngo-account-details {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+  padding: 28px 25px;
+}
+
+.ngo-account-details > div {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.ngo-account-details span {
+  color: #89938c;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.ngo-account-details strong {
+  color: #26382c;
+  font-size: 13px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 650px) {
+  .ngo-account-details {
+    grid-template-columns: 1fr;
+    gap: 20px;
+    padding: 22px 18px;
+  }
+}
