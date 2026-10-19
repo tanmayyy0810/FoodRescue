@@ -1026,3 +1026,160 @@
         row-gap: 16px;
     }
 }
+
+/* =========================================
+   DONOR MOBILE NAVIGATION
+   Matches NGO Portal
+   ========================================= */
+
+/* Hidden on desktop */
+.donor-mobile-header,
+.donor-mobile-menu-button,
+.donor-sidebar-close,
+.donor-mobile-backdrop {
+    display: none;
+}
+
+/* Mobile layout */
+@media (max-width: 800px) {
+
+    /* Header above dashboard content */
+    .donor-dashboard .donor-mobile-header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 24px 20px 0;
+        color: #173326;
+    }
+
+    .donor-dashboard .donor-mobile-header strong {
+        font-size: 16px;
+        font-weight: 700;
+        color: #173326;
+    }
+
+    /* NGO-style hamburger */
+    .donor-dashboard .donor-mobile-menu-button {
+        display: flex;
+        position: static;
+        width: 40px;
+        height: 40px;
+        flex-shrink: 0;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid #dce2dc;
+        border-radius: 0;
+        background: #ffffff;
+        color: #173326;
+        font-size: 23px;
+        cursor: pointer;
+    }
+
+    /* Slide-out sidebar */
+    .donor-dashboard .donor-sidebar {
+        display: flex;
+        flex-direction: column;
+        position: fixed;
+        top: 0;
+        left: 0;
+        bottom: 0;
+
+        width: min(270px, 85vw);
+        height: 100dvh;
+        min-height: 0;
+        padding: 25px 14px 20px;
+        box-sizing: border-box;
+
+        background: #1d3024;
+        overflow-y: auto;
+
+        z-index: 1101;
+
+        transform: translateX(-100%);
+        transition: transform 0.25s ease;
+    }
+
+    .donor-dashboard .donor-sidebar.mobile-open {
+        transform: translateX(0);
+    }
+
+    /* Close button inside sidebar */
+    .donor-dashboard .donor-sidebar-close {
+        display: block;
+        align-self: flex-end;
+        flex-shrink: 0;
+        margin-bottom: 12px;
+        padding: 4px 10px;
+
+        border: 1px solid rgba(255, 255, 255, 0.25);
+        background: transparent;
+        color: #ffffff;
+        font-size: 25px;
+        cursor: pointer;
+    }
+
+    /* Restore navigation hidden by older mobile CSS */
+    .donor-dashboard .dashboard-nav {
+        display: block;
+    }
+
+    .donor-dashboard .sidebar-bottom {
+        display: block;
+    }
+
+    /* Dashboard content */
+    .donor-dashboard .donor-main {
+        width: 100%;
+        margin-left: 0;
+        padding: 24px 20px 30px;
+        box-sizing: border-box;
+    }
+
+    /* Dark backdrop behind sidebar */
+    .donor-dashboard .donor-mobile-backdrop {
+        display: block;
+        position: fixed;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 1100;
+
+        background: rgba(0, 0, 0, 0.45);
+        border: none;
+        cursor: pointer;
+    }
+
+    /* The outside hamburger must disappear
+       while the sidebar is open */
+    .donor-dashboard:has(.donor-sidebar.mobile-open)
+    .donor-mobile-header {
+        visibility: hidden;
+    }
+}
+
+/* =========================================
+   DONOR MOBILE STATISTICS — 2 × 2 GRID
+   ========================================= */
+
+@media (max-width: 520px) {
+
+    .donor-dashboard .dashboard-stats {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .donor-dashboard .dashboard-stat-card {
+        min-width: 0;
+        min-height: 155px;
+        padding: 22px 16px;
+        border-right: 1px solid #e1e4de;
+        border-bottom: 1px solid #e1e4de;
+    }
+
+    .donor-dashboard .dashboard-stat-card:nth-child(2n) {
+        border-right: none;
+    }
+
+    .donor-dashboard .dashboard-stat-card:nth-last-child(-n + 2) {
+        border-bottom: none;
+    }
+}

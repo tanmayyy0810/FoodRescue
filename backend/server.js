@@ -1186,7 +1186,8 @@ app.get("/api/donors/:donorId/dashboard", async (req, res) => {
                 SUM(
                     CASE
                         WHEN status = 'AVAILABLE'
-                         AND GET_REMAINING_QUANTITY(batch_id) > 0
+                        AND expiry_time > SYSDATE
+                        AND GET_REMAINING_QUANTITY(batch_id) > 0
                         THEN 1
                         ELSE 0
                     END
@@ -2175,7 +2176,89 @@ app.get(
         }
     }
 });
+// Get donor account details
+app.get(
+    "/api/donors/:donorId/account",
+    authenticateToken,
+    requireRole("DONOR"),
+    async (req, res) => {
+        let connection;
 
+        try {
+            const donorId = Number(req.params.donorId);
+
+            if (!Number.isInteger(donorId) || donorId <= 0) {
+                return res.status(400).json({
+                    message: "Invalid donor ID"
+                });
+            }
+
+            if (Number(req.user.donorId) !== donorId) {
+                return res.status(403).json({
+                    message: "You can only access your own donor account details."
+                });
+            }
+
+            connection = await getConnection();
+
+            const result = await connection.execute(
+                `
+                SELECT
+                    d.DONOR_NAME,
+                    u.USERNAME,
+                    u.ROLE,
+                    u.STATUS AS ACCOUNT_STATUS,
+                    d.EMAIL,
+                    d.PHONE,
+                    d.ADDRESS,
+                    d.REGISTRATION_DATE,
+                    d.STATUS AS APPROVAL_STATUS
+                FROM DONOR d
+                JOIN USER_ACCOUNT u
+                    ON u.DONOR_ID = d.DONOR_ID
+                WHERE d.DONOR_ID = :donorId
+                  AND u.USER_ID = :userId
+                `,
+                {
+                    donorId,
+                    userId: req.user.userId
+                }
+            );
+
+            if (result.rows.length === 0) {
+                return res.status(404).json({
+                    message: "Donor account not found"
+                });
+            }
+
+            const row = result.rows[0];
+
+            res.json({
+                organizationName: row[0],
+                username: row[1],
+                role: row[2],
+                accountStatus: row[3],
+                email: row[4],
+                phone: row[5],
+                address: row[6],
+                registrationDate: row[7],
+                approvalStatus: row[8]
+            });
+
+        } catch (error) {
+            console.error("Donor account details error:", error);
+
+            res.status(500).json({
+                message: "Failed to load donor account details"
+            });
+
+        } finally {
+            if (connection) {
+                await connection.close();
+            }
+        }
+    }
+);
 app.listen(PORT, () => {
     console.log(`FoodRescue backend running on http://localhost:${PORT}`);
 });

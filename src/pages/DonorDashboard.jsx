@@ -6,14 +6,24 @@ import { useEffect, useState } from "react";
 function DonorDashboard({ onLogout, onAddFood, donorId }) {
     const [batches, setBatches] = useState([]);
     const [donor, setDonor] = useState(null);
+    const [accountDetails, setAccountDetails] = useState(null);
+const [accountLoading, setAccountLoading] = useState(false);
+const [accountError, setAccountError] = useState("");
     const [stats, setStats] = useState(null);
     const [loading, setLoading] = useState(true);
     const [activeSection, setActiveSection] = useState("dashboard");
+    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+    const navigateToSection = (section) => {
+    setActiveSection(section);
+    setMobileMenuOpen(false);
+};
     const [allocations, setAllocations] = useState([]);
+    const [showAllRecentAllocations, setShowAllRecentAllocations] = useState(false);
     const [deliveries, setDeliveries] = useState([]);
 const [deliveriesLoading, setDeliveriesLoading] = useState(true);
 const [deliveriesError, setDeliveriesError] = useState("");
     const [matchingRequests, setMatchingRequests] = useState([]);
+    const [showAllMatchingRequests, setShowAllMatchingRequests] = useState(false);
     const [matchingLoading, setMatchingLoading] = useState(true);
     const [matchingError, setMatchingError] = useState("");
     const [acceptQuantities, setAcceptQuantities] = useState({});
@@ -21,6 +31,7 @@ const [deliveriesError, setDeliveriesError] = useState("");
     const [acceptMessage, setAcceptMessage] = useState("");
     const [acceptError, setAcceptError] = useState("");
     const [acceptedRequests, setAcceptedRequests] = useState([]);
+    const [showAllAcceptedRequests, setShowAllAcceptedRequests] = useState(false);
     const [acceptedLoading, setAcceptedLoading] = useState(true);
     const [acceptedError, setAcceptedError] = useState("");
 
@@ -180,6 +191,47 @@ const loadDeliveries = async () => {
 useEffect(() => {
     loadDeliveries();
 }, [donorId]);
+useEffect(() => {
+    if (!donorId || activeSection !== "account") return;
+
+    const loadAccountDetails = async () => {
+        setAccountLoading(true);
+        setAccountError("");
+
+        try {
+            const savedSession = JSON.parse(
+    localStorage.getItem("foodrescue_session") || "null"
+);
+
+const token = savedSession?.user?.token;
+
+            const response = await fetch(
+                `http://localhost:5000/api/donors/${donorId}/account`,
+                {
+                    headers: {
+                        Authorization: `Bearer ${token}`
+                    }
+                }
+            );
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(
+                    data.message || "Failed to load account details"
+                );
+            }
+
+            setAccountDetails(data);
+        } catch (error) {
+            setAccountError(error.message);
+        } finally {
+            setAccountLoading(false);
+        }
+    };
+
+    loadAccountDetails();
+}, [donorId, activeSection]);
     const handleAcceptRequest = async (request) => {
         const key = `${request.requestItemId}-${request.batchId}`;
         const quantity = Number(acceptQuantities[key]);
@@ -284,10 +336,44 @@ setAcceptedRequests(updatedAcceptedRequests);
                 : "Good evening";
     return (
         <div className="donor-dashboard">
+            <div className="donor-mobile-header">
+    <button
+        type="button"
+        className="donor-mobile-menu-button"
+        onClick={() => setMobileMenuOpen((previous) => !previous)}
+        aria-label="Open menu"
+        aria-expanded={mobileMenuOpen}
+    >
+        ☰
+    </button>
+
+    <strong>FoodRescue</strong>
+</div>
+{mobileMenuOpen && (
+    <button
+        type="button"
+        className="donor-mobile-backdrop"
+        aria-label="Close navigation menu"
+        onClick={() => setMobileMenuOpen(false)}
+    />
+)}
 
             {/* SIDEBAR */}
-
-            <aside className="donor-sidebar">
+<aside
+    className={`donor-sidebar ${
+        mobileMenuOpen ? "mobile-open" : ""
+    }`}
+>
+    <button
+    type="button"
+    className="donor-sidebar-close"
+    onClick={() => setMobileMenuOpen(false)}
+    aria-label="Close menu"
+>
+    ✕
+</button>
+            
+                
 
                 <div className="dashboard-brand">
                     <div className="dashboard-logo">F</div>
@@ -307,27 +393,37 @@ setAcceptedRequests(updatedAcceptedRequests);
     className={`nav-item ${
         activeSection === "dashboard" ? "active" : ""
     }`}
-    onClick={() => setActiveSection("dashboard")}
+    onClick={() => navigateToSection("dashboard")}
 >
     <span className="nav-icon">01</span>
     Dashboard
 </button>
 
-                    <button className="nav-item">
-                        <span className="nav-icon">02</span>
-                        Food Batches
-                    </button>
+                    <button
+    className={`nav-item ${
+        activeSection === "batches" ? "active" : ""
+    }`}
+    onClick={() => navigateToSection("batches")}
+>
+    <span className="nav-icon">02</span>
+    Food Batches
+</button>
 
-                    <button className="nav-item">
-                        <span className="nav-icon">03</span>
-                        Allocations
-                    </button>
+                    <button
+    className={`nav-item ${
+        activeSection === "allocations" ? "active" : ""
+    }`}
+    onClick={() => navigateToSection("allocations")}
+>
+    <span className="nav-icon">03</span>
+    Allocations
+</button>
 
                     <button
     className={`nav-item ${
         activeSection === "deliveries" ? "active" : ""
     }`}
-    onClick={() => setActiveSection("deliveries")}
+    onClick={() => navigateToSection("deliveries")}
 >
     <span className="nav-icon">04</span>
     Deliveries
@@ -338,15 +434,18 @@ setAcceptedRequests(updatedAcceptedRequests);
                         ACCOUNT
                     </p>
 
-                    <button className="nav-item">
-                        <span className="nav-icon">05</span>
-                        Organization
-                    </button>
+                    <button
+    type="button"
+    className={`nav-item ${
+        activeSection === "account" ? "active" : ""
+    }`}
+    onClick={() => navigateToSection("account")}
+>
+    <span className="nav-icon">05</span>
+    Account Details
+</button>
 
-                    <button className="nav-item">
-                        <span className="nav-icon">06</span>
-                        Notifications
-                    </button>
+                    
 
                 </nav>
 
@@ -402,8 +501,8 @@ setAcceptedRequests(updatedAcceptedRequests);
                     </div>
 
                 </header>
-                {activeSection === "dashboard" && (
-    <>
+                {/* {activeSection === "dashboard" && (
+    <> */}
 
 
                 {/* STATISTICS */}
@@ -462,6 +561,8 @@ setAcceptedRequests(updatedAcceptedRequests);
                     </div>
 
                 </section>
+                {activeSection === "dashboard" && (
+    <>
 
 
                 {/* MAIN GRID */}
@@ -479,9 +580,13 @@ setAcceptedRequests(updatedAcceptedRequests);
                                 <h2>Recent batches</h2>
                             </div>
 
-                            <button className="outline-button">
-                                View all
-                            </button>
+                            <button
+    type="button"
+    className="outline-button"
+    onClick={() => setShowAllRecentAllocations((previous) => !previous)}
+>
+    {showAllRecentAllocations ? "Show less" : "View all"}
+</button>
 
                         </div>
 
@@ -532,8 +637,12 @@ setAcceptedRequests(updatedAcceptedRequests);
 
                                             <span>
                                                 {expiry.toLocaleTimeString([], {
-                                                    hour: "2-digit",
-                                                    minute: "2-digit",
+                                                    day: "2-digit",
+        month: "short",
+    
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: true
                                                 })}
                                             </span>
 
@@ -602,11 +711,23 @@ setAcceptedRequests(updatedAcceptedRequests);
                 {/* MATCHING NGO REQUESTS */}
                 <section className="dashboard-card allocation-card">
                     <div className="card-heading">
-                        <div>
-                            <span>FOOD REDISTRIBUTION</span>
-                            <h2>Matching NGO requests</h2>
-                        </div>
-                    </div>
+    <div>
+        <span>FOOD REDISTRIBUTION</span>
+        <h2>Matching NGO requests</h2>
+    </div>
+
+    {matchingRequests.length > 5 && (
+        <button
+            type="button"
+            className="outline-button"
+            onClick={() =>
+                setShowAllMatchingRequests((previous) => !previous)
+            }
+        >
+            {showAllMatchingRequests ? "Show less" : "View all"}
+        </button>
+    )}
+</div>
                     {acceptMessage && (
                         <p role="status" className="accept-success-message">
                             {acceptMessage}
@@ -638,7 +759,9 @@ setAcceptedRequests(updatedAcceptedRequests);
                                 <span>ACTION</span>
                             </div>
 
-                            {matchingRequests.map((request) => (
+                            {matchingRequests
+    .slice(0, showAllMatchingRequests ? undefined : 5)
+    .map((request) => (
                                 <div
                                     className="allocation-row"
                                     key={`${request.requestItemId}-${request.batchId}`}
@@ -709,12 +832,23 @@ setAcceptedRequests(updatedAcceptedRequests);
                 {/* ACCEPTED NGO REQUESTS */}
                 <section className="dashboard-card allocation-card">
                     <div className="card-heading">
-                        <div>
-                            <span>FOOD REDISTRIBUTION</span>
-                            <h2>Accepted requests</h2>
-                        </div>
-                    </div>
+    <div>
+        <span>FOOD REDISTRIBUTION</span>
+        <h2>Accepted requests</h2>
+    </div>
 
+    {acceptedRequests.length > 5 && (
+        <button
+            type="button"
+            className="outline-button"
+            onClick={() =>
+                setShowAllAcceptedRequests((previous) => !previous)
+            }
+        >
+            {showAllAcceptedRequests ? "Show less" : "View all"}
+        </button>
+    )}
+</div>
                     {acceptedLoading ? (
                         <p className="matching-empty-message">
                             Loading accepted requests...
@@ -737,7 +871,10 @@ setAcceptedRequests(updatedAcceptedRequests);
                                 <span>STATUS</span>
                             </div>
 
-                            {acceptedRequests.map((request) => (
+                            {[...acceptedRequests]
+    .sort((a, b) => b.acceptanceId - a.acceptanceId)
+    .slice(0, showAllAcceptedRequests ? undefined : 5)
+    .map((request) => (
                                 <div
                                     className="allocation-row"
                                     key={request.acceptanceId}
@@ -776,9 +913,15 @@ setAcceptedRequests(updatedAcceptedRequests);
                             <h2>Recent allocations</h2>
                         </div>
 
-                        <button className="outline-button">
-                            View all
-                        </button>
+                        <button
+    type="button"
+    className="outline-button"
+    onClick={() =>
+        setShowAllRecentAllocations((previous) => !previous)
+    }
+>
+    {showAllRecentAllocations ? "Show less" : "View all"}
+</button>
 
                     </div>
 
@@ -799,7 +942,12 @@ setAcceptedRequests(updatedAcceptedRequests);
                                 <span>No allocations recorded yet.</span>
                             </div>
                         ) : (
-                            allocations.map((allocation) => (
+                            [...allocations]
+    .sort((a, b) =>
+        new Date(b.allocationDate) - new Date(a.allocationDate)
+    )
+    .slice(0, showAllRecentAllocations ? undefined : 5)
+    .map((allocation) => (
                                 <div
                                     className="allocation-row"
                                     key={allocation.allocationId}
@@ -840,6 +988,217 @@ setAcceptedRequests(updatedAcceptedRequests);
 
                 </section>
                     </>
+)}
+{/* ALL FOOD BATCHES VIEW */}
+{activeSection === "batches" && (
+    <section className="dashboard-card batches-card">
+        <div className="card-heading">
+            <div>
+                <span>FOOD INVENTORY</span>
+                <h2>Food Batches</h2>
+            </div>
+        </div>
+
+        <div className="batch-table">
+            <div className="table-header">
+                <span>FOOD</span>
+                <span>QUANTITY</span>
+                <span>EXPIRY</span>
+                <span>STATUS</span>
+            </div>
+
+            {loading ? (
+                <p className="matching-empty-message">
+                    Loading food batches...
+                </p>
+            ) : batches.length === 0 ? (
+                <p className="matching-empty-message">
+                    No available food batches.
+                </p>
+            ) : (
+                batches.map((batch) => (
+                    <div className="batch-row" key={batch[0]}>
+                        <div className="food-name">
+                            <div className="food-code">
+                                {batch[3]
+                                    .split(" ")
+                                    .map((word) => word[0])
+                                    .join("")
+                                    .slice(0, 2)
+                                    .toUpperCase()}
+                            </div>
+                            <div>
+                                <strong>{batch[3]}</strong>
+                                <span>Batch #{batch[0]}</span>
+                            </div>
+                        </div>
+
+                        <span>
+                            {batch[5]} {batch[6].toLowerCase()}
+                        </span>
+
+                        <span>
+                            {new Date(batch[8]).toLocaleString("en-IN", {
+                                day: "2-digit",
+                                month: "short",
+                                hour: "2-digit",
+                                minute: "2-digit"
+                            })}
+                        </span>
+
+                        <span className="batch-status available">
+                            {batch[10]}
+                        </span>
+                    </div>
+                ))
+            )}
+        </div>
+    </section>
+)}
+{/* ALL ALLOCATIONS VIEW */}
+{activeSection === "allocations" && (
+    <section className="dashboard-card allocation-card">
+        <div className="card-heading">
+            <div>
+                <span>FOOD REDISTRIBUTION</span>
+                <h2>All Allocations</h2>
+            </div>
+        </div>
+
+        <div className="allocation-table">
+            <div className="allocation-header">
+                <span>FOOD</span>
+                <span>RECIPIENT</span>
+                <span>QUANTITY</span>
+                <span>DATE</span>
+                <span>STATUS</span>
+            </div>
+
+            {loading ? (
+                <p className="matching-empty-message">
+                    Loading allocations...
+                </p>
+            ) : allocations.length === 0 ? (
+                <p className="matching-empty-message">
+                    No allocations recorded yet.
+                </p>
+            ) : (
+                allocations.map((allocation) => (
+                    <div
+                        className="allocation-row"
+                        key={allocation.allocationId}
+                    >
+                        <span className="allocation-food">
+                            {allocation.itemName}
+                        </span>
+
+                        <span>{allocation.ngoName}</span>
+
+                        <span>
+                            {allocation.allocatedQuantity}{" "}
+                            {allocation.unit.toLowerCase()}
+                        </span>
+
+                        <span>
+                            {new Date(
+                                allocation.allocationDate
+                            ).toLocaleDateString("en-GB", {
+                                day: "2-digit",
+                                month: "short",
+                                year: "numeric"
+                            })}
+                        </span>
+
+                        <span className="allocation-status">
+                            {allocation.status}
+                        </span>
+                    </div>
+                ))
+            )}
+        </div>
+    </section>
+)}
+{/* DONOR ACCOUNT DETAILS VIEW */}
+{activeSection === "account" && (
+    <section className="dashboard-card allocation-card">
+        <div className="card-heading">
+            <div>
+                <span>ORGANIZATION PROFILE</span>
+                <h2>Account Details</h2>
+            </div>
+        </div>
+
+        {accountLoading ? (
+            <p className="matching-empty-message">
+                Loading account details...
+            </p>
+        ) : accountError ? (
+            <p className="accept-error-message" role="alert">
+                {accountError}
+            </p>
+        ) : !accountDetails ? (
+            <p className="matching-empty-message">
+                Account details are not available.
+            </p>
+        ) : (
+            <div className="donor-delivery-details" style={{ padding: "24px" }}>
+                <div>
+                    <span>ORGANIZATION NAME</span>
+                    <strong>{accountDetails.organizationName || "—"}</strong>
+                </div>
+
+                <div>
+                    <span>USERNAME</span>
+                    <strong>{accountDetails.username || "—"}</strong>
+                </div>
+
+                <div>
+                    <span>ACCOUNT ROLE</span>
+                    <strong>{accountDetails.role || "—"}</strong>
+                </div>
+
+                <div>
+                    <span>ACCOUNT STATUS</span>
+                    <strong>{accountDetails.accountStatus || "—"}</strong>
+                </div>
+
+                <div>
+                    <span>EMAIL</span>
+                    <strong>{accountDetails.email || "—"}</strong>
+                </div>
+
+                <div>
+                    <span>PHONE</span>
+                    <strong>{accountDetails.phone || "—"}</strong>
+                </div>
+
+                <div>
+                    <span>ADDRESS</span>
+                    <strong>{accountDetails.address || "—"}</strong>
+                </div>
+
+                <div>
+                    <span>REGISTRATION DATE</span>
+                    <strong>
+                        {accountDetails.registrationDate
+                            ? new Date(
+                                  accountDetails.registrationDate
+                              ).toLocaleDateString("en-IN", {
+                                  day: "2-digit",
+                                  month: "long",
+                                  year: "numeric"
+                              })
+                            : "—"}
+                    </strong>
+                </div>
+
+                <div>
+                    <span>APPROVAL STATUS</span>
+                    <strong>{accountDetails.approvalStatus || "—"}</strong>
+                </div>
+            </div>
+        )}
+    </section>
 )}
 {/* DONOR DELIVERIES VIEW */}
 {activeSection === "deliveries" && (
