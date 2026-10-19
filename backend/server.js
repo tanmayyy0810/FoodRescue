@@ -4,6 +4,12 @@ const { getConnection } = require("./db");
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+app.get("/healthz", (req, res) => {
+    res.status(200).json({
+        status: "ok",
+        service: "FoodRescue backend"
+    });
+});
 const jwt = require("jsonwebtoken");
 const {
     authenticateToken,
