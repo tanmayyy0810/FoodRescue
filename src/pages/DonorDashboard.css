@@ -436,7 +436,7 @@
 .batch-row {
   display: grid;
 
-  grid-template-columns: 2fr 1fr 1fr 1.1fr;
+  grid-template-columns: 2fr 1fr 1fr 1.1fr 1fr;
 
   align-items: center;
 }

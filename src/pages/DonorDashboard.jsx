@@ -596,6 +596,7 @@ setAcceptedRequests(updatedAcceptedRequests);
                             <div className="table-header">
                                 <span>FOOD</span>
                                 <span>QUANTITY</span>
+                                <span>REMAINING</span>
                                 <span>EXPIRY</span>
                                 <span>STATUS</span>
                             </div>
@@ -634,6 +635,10 @@ setAcceptedRequests(updatedAcceptedRequests);
                                             <span>
                                                 {batch[5]} {batch[6].toLowerCase()}
                                             </span>
+
+<span>
+    {batch[11]} {batch[6].toLowerCase()}
+</span>
 
                                             <span>
                                                 {expiry.toLocaleTimeString([], {
