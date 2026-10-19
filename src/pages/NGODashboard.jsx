@@ -1,3 +1,4 @@
+import { API_BASE_URL } from "../apiConfig";
 import { useEffect, useState } from "react";
 import "./NGODashboard.css";
 
@@ -42,8 +43,8 @@ const [accountError, setAccountError] = useState("");
             setLoading(true);
 
             const [requestsResponse, batchesResponse] = await Promise.all([
-                fetch(`http://localhost:5000/api/ngo-requests/${ngoId}`),
-                fetch("http://localhost:5000/api/food-batches")
+                fetch(`${API_BASE_URL}/api/ngo-requests/${ngoId}`),
+                fetch(`${API_BASE_URL}/api/food-batches`)
             ]);
 
             const requestsData = await requestsResponse.json();
@@ -82,7 +83,7 @@ const [accountError, setAccountError] = useState("");
             setDeliveriesError("");
 
             const response = await fetch(
-                `http://localhost:5000/api/ngos/${ngoId}/deliveries`
+                `${API_BASE_URL}/api/ngos/${ngoId}/deliveries`
             );
 
             const data = await response.json();
@@ -112,7 +113,7 @@ const [accountError, setAccountError] = useState("");
         setAccountError("");
 
         const response = await fetch(
-            `http://localhost:5000/api/ngos/${ngoId}/account`,
+            `${API_BASE_URL}/api/ngos/${ngoId}/account`,
             {
                 headers: {
                     Authorization: `Bearer ${user?.token}`
@@ -228,7 +229,7 @@ const [accountError, setAccountError] = useState("");
 
         try {
             const response = await fetch(
-                "http://localhost:5000/api/ngo-requests",
+                `${API_BASE_URL}/api/ngo-requests`,
                 {
                     method: "POST",
                     headers: {
@@ -286,7 +287,7 @@ const [accountError, setAccountError] = useState("");
             setCancellingRequestId(requestId);
 
             const response = await fetch(
-                "http://localhost:5000/api/ngo-requests/cancel",
+                `${API_BASE_URL}/api/ngo-requests/cancel`,
                 {
                     method: "POST",
                     headers: {

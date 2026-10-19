@@ -1,3 +1,4 @@
+import { API_BASE_URL } from "../apiConfig";
 import { useEffect, useState } from "react";
 import "./AdminDashboard.css";
 
@@ -52,7 +53,7 @@ const [showAllAllocations, setShowAllAllocations] = useState(false);
       setError("");
 
       const response = await fetch(
-        "http://localhost:5000/api/admin/organizations",
+        `${API_BASE_URL}/api/admin/organizations`,
         {
           headers: {
             Authorization: `Bearer ${user.token}`
@@ -80,7 +81,7 @@ const [showAllAllocations, setShowAllAllocations] = useState(false);
       setDeliveriesError("");
 
       const response = await fetch(
-        "http://localhost:5000/api/admin/deliveries",
+        `${API_BASE_URL}/api/admin/deliveries`,
         {
           cache: "no-store",
           headers: {
@@ -111,7 +112,7 @@ const [showAllAllocations, setShowAllAllocations] = useState(false);
       setUnassignedError("");
 
       const response = await fetch(
-        "http://localhost:5000/api/admin/unassigned-deliveries",
+        `${API_BASE_URL}/api/admin/unassigned-deliveries`,
         {
           cache: "no-store",
           headers: {
@@ -172,7 +173,7 @@ const [showAllAllocations, setShowAllAllocations] = useState(false);
       setAssigningDelivery(true);
 
       const response = await fetch(
-        "http://localhost:5000/api/admin/deliveries",
+        `${API_BASE_URL}/api/admin/deliveries`,
         {
           method: "POST",
           headers: {
@@ -259,7 +260,7 @@ const [showAllAllocations, setShowAllAllocations] = useState(false);
       setUpdatingDeliveryId(delivery.deliveryId);
 
       const response = await fetch(
-        `http://localhost:5000/api/admin/deliveries/${delivery.deliveryId}/status`,
+        `${API_BASE_URL}/api/admin/deliveries/${delivery.deliveryId}/status`,
         {
           method: "PATCH",
           headers: {
@@ -309,7 +310,7 @@ const [showAllAllocations, setShowAllAllocations] = useState(false);
         setAllocationsError("");
 
         const response = await fetch(
-          "http://localhost:5000/api/admin/pending-allocations",
+          `${API_BASE_URL}/api/admin/pending-allocations`,
           {
             headers: {
               Authorization: `Bearer ${user.token}`
@@ -359,7 +360,7 @@ const [showAllAllocations, setShowAllAllocations] = useState(false);
       }
 
       const response = await fetch(
-        `http://localhost:5000${endpoint}`,
+        `${API_BASE_URL}${endpoint}`,
         {
           method: "POST",
           headers: {
@@ -410,7 +411,7 @@ const [showAllAllocations, setShowAllAllocations] = useState(false);
       setAllocatingId(allocation.acceptanceId);
 
       const response = await fetch(
-        "http://localhost:5000/api/allocations",
+        `${API_BASE_URL}/api/allocations`,
         {
           method: "POST",
           headers: {
@@ -443,7 +444,7 @@ const [showAllAllocations, setShowAllAllocations] = useState(false);
       }));
 
       const refreshResponse = await fetch(
-        "http://localhost:5000/api/admin/pending-allocations",
+        `${API_BASE_URL}/api/admin/pending-allocations`,
         {
           cache: "no-store", headers: {
             Authorization: `Bearer ${user.token}`

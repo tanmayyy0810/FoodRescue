@@ -1,3 +1,4 @@
+import { API_BASE_URL } from "../apiConfig";
 import { useState } from "react";
 import "./AddFoodBatch.css";
 
@@ -74,7 +75,7 @@ function AddFoodBatch({ onBack }) {
 
   try {
     const response = await fetch(
-      "http://localhost:5000/api/food-batches",
+      `${API_BASE_URL}/api/food-batches`,
       {
         method: "POST",
         headers: {

@@ -1,3 +1,4 @@
+import { API_BASE_URL } from "../apiConfig";
 import "./DonorDashboard.css";
 import { useEffect, useState } from "react";
 
@@ -47,9 +48,9 @@ const [deliveriesError, setDeliveriesError] = useState("");
                     dashboardResponse,
                     allocationsResponse
                 ] = await Promise.all([
-                    fetch(`http://localhost:5000/api/food-batches?donorId=${donorId}`),
-                    fetch(`http://localhost:5000/api/donors/${donorId}/dashboard`),
-                    fetch(`http://localhost:5000/api/donors/${donorId}/allocations`)
+                    fetch(`${API_BASE_URL}/api/food-batches?donorId=${donorId}`),
+                    fetch(`${API_BASE_URL}/api/donors/${donorId}/dashboard`),
+                    fetch(`${API_BASE_URL}/api/donors/${donorId}/allocations`)
                 ]);
 
                 const batchData = await batchResponse.json();
@@ -100,7 +101,7 @@ const [deliveriesError, setDeliveriesError] = useState("");
                 setMatchingError("");
 
                 const response = await fetch(
-                    `http://localhost:5000/api/donors/${donorId}/matching-requests`
+                    `${API_BASE_URL}/api/donors/${donorId}/matching-requests`
                 );
 
                 const data = await response.json();
@@ -134,7 +135,7 @@ const [deliveriesError, setDeliveriesError] = useState("");
                 setAcceptedError("");
 
                 const response = await fetch(
-                    `http://localhost:5000/api/donors/${donorId}/accepted-requests`
+                    `${API_BASE_URL}/api/donors/${donorId}/accepted-requests`
                 );
 
                 const data = await response.json();
@@ -169,7 +170,7 @@ const loadDeliveries = async () => {
         setDeliveriesError("");
 
         const response = await fetch(
-            `http://localhost:5000/api/donors/${donorId}/deliveries`
+            `${API_BASE_URL}/api/donors/${donorId}/deliveries`
         );
 
         const data = await response.json();
@@ -206,7 +207,7 @@ useEffect(() => {
 const token = savedSession?.user?.token;
 
             const response = await fetch(
-                `http://localhost:5000/api/donors/${donorId}/account`,
+                `${API_BASE_URL}/api/donors/${donorId}/account`,
                 {
                     headers: {
                         Authorization: `Bearer ${token}`
@@ -255,7 +256,7 @@ const token = savedSession?.user?.token;
             setAcceptingRequest(key);
 
             const response = await fetch(
-                "http://localhost:5000/api/donor-acceptances",
+                `${API_BASE_URL}/api/donor-acceptances`,
                 {
                     method: "POST",
                     headers: {
@@ -286,7 +287,7 @@ const token = savedSession?.user?.token;
             }));
 
             const refreshResponse = await fetch(
-                `http://localhost:5000/api/donors/${donorId}/matching-requests`,
+                `${API_BASE_URL}/api/donors/${donorId}/matching-requests`,
                 { cache: "no-store" }
             );
 
@@ -297,7 +298,7 @@ const token = savedSession?.user?.token;
             const refreshedRequests = await refreshResponse.json();
             setMatchingRequests(refreshedRequests);
             const acceptedResponse = await fetch(
-    `http://localhost:5000/api/donors/${donorId}/accepted-requests`,
+    `${API_BASE_URL}/api/donors/${donorId}/accepted-requests`,
     { cache: "no-store" }
 );
 
