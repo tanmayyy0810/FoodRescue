@@ -8,15 +8,15 @@ function NGODashboard({ onLogout, ngoId, user }) {
     const [loading, setLoading] = useState(true);
     const [deliveries, setDeliveries] = useState([]);
     const [accountDetails, setAccountDetails] = useState(null);
-const [accountLoading, setAccountLoading] = useState(true);
-const [accountError, setAccountError] = useState("");
+    const [accountLoading, setAccountLoading] = useState(true);
+    const [accountError, setAccountError] = useState("");
     const [deliveriesLoading, setDeliveriesLoading] = useState(true);
     const [deliveriesError, setDeliveriesError] = useState("");
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const navigateTo = (section) => {
-  setActiveSection(section);
-  setMobileMenuOpen(false);
-};
+        setActiveSection(section);
+        setMobileMenuOpen(false);
+    };
 
     const [activeSection, setActiveSection] = useState("dashboard");
 
@@ -62,7 +62,11 @@ const [accountError, setAccountError] = useState("");
                 );
             }
 
-            setRequests(requestsData);
+            setRequests(
+                [...requestsData].sort(
+                    (a, b) => Number(b[0]) - Number(a[0])
+                )
+            );
             setBatches(batchesData);
         } catch (error) {
             console.error("Failed to load NGO dashboard:", error);
@@ -103,40 +107,40 @@ const [accountError, setAccountError] = useState("");
         }
     };
     const loadAccountDetails = async () => {
-    if (!ngoId) {
-        setAccountLoading(false);
-        return;
-    }
-
-    try {
-        setAccountLoading(true);
-        setAccountError("");
-
-        const response = await fetch(
-            `${API_BASE_URL}/api/ngos/${ngoId}/account`,
-            {
-                headers: {
-                    Authorization: `Bearer ${user?.token}`
-                }
-            }
-        );
-
-        const data = await response.json();
-
-        if (!response.ok) {
-            throw new Error(
-                data.message || "Failed to load account details"
-            );
+        if (!ngoId) {
+            setAccountLoading(false);
+            return;
         }
 
-        setAccountDetails(data);
-    } catch (error) {
-        console.error("NGO account details error:", error);
-        setAccountError(error.message);
-    } finally {
-        setAccountLoading(false);
-    }
-};
+        try {
+            setAccountLoading(true);
+            setAccountError("");
+
+            const response = await fetch(
+                `${API_BASE_URL}/api/ngos/${ngoId}/account`,
+                {
+                    headers: {
+                        Authorization: `Bearer ${user?.token}`
+                    }
+                }
+            );
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(
+                    data.message || "Failed to load account details"
+                );
+            }
+
+            setAccountDetails(data);
+        } catch (error) {
+            console.error("NGO account details error:", error);
+            setAccountError(error.message);
+        } finally {
+            setAccountLoading(false);
+        }
+    };
 
     useEffect(() => {
         loadData();
@@ -146,8 +150,8 @@ const [accountError, setAccountError] = useState("");
         loadDeliveries();
     }, [ngoId]);
     useEffect(() => {
-    loadAccountDetails();
-}, [ngoId, user?.token]);
+        loadAccountDetails();
+    }, [ngoId, user?.token]);
 
     // DATE AND GREETING
 
@@ -188,8 +192,8 @@ const [accountError, setAccountError] = useState("");
     ).length;
 
     const completedDeliveries = deliveries.filter(
-    (delivery) => delivery.status === "DELIVERED"
-).length;
+        (delivery) => delivery.status === "DELIVERED"
+    ).length;
 
     // OPEN FOOD REQUEST FORM
 
@@ -485,27 +489,27 @@ const [accountError, setAccountError] = useState("");
 
             {/* SIDEBAR */}
             {mobileMenuOpen && (
-  <button
-    type="button"
-    className="ngo-mobile-backdrop"
-    aria-label="Close navigation menu"
-    onClick={() => setMobileMenuOpen(false)}
-  />
-)}
+                <button
+                    type="button"
+                    className="ngo-mobile-backdrop"
+                    aria-label="Close navigation menu"
+                    onClick={() => setMobileMenuOpen(false)}
+                />
+            )}
 
             <aside
-  className={`ngo-sidebar ${mobileMenuOpen ? "mobile-open" : ""}`}
-  id="ngo-mobile-navigation"
-  
->
-    <button
-  type="button"
-  className="ngo-mobile-close-button"
-  aria-label="Close navigation menu"
-  onClick={() => setMobileMenuOpen(false)}
->
-  ×
-</button>
+                className={`ngo-sidebar ${mobileMenuOpen ? "mobile-open" : ""}`}
+                id="ngo-mobile-navigation"
+
+            >
+                <button
+                    type="button"
+                    className="ngo-mobile-close-button"
+                    aria-label="Close navigation menu"
+                    onClick={() => setMobileMenuOpen(false)}
+                >
+                    ×
+                </button>
 
                 <div className="ngo-dashboard-brand">
                     <div className="ngo-dashboard-logo">
@@ -563,7 +567,7 @@ const [accountError, setAccountError] = useState("");
                         Available Food
                     </button>
 
-                    
+
 
                     <button
                         className={`ngo-nav-item ${activeSection === "deliveries" ? "active" : ""
@@ -581,17 +585,16 @@ const [accountError, setAccountError] = useState("");
                     </p>
 
                     <button
-  type="button"
-  className={`ngo-nav-item ${
-    activeSection === "account" ? "active" : ""
-  }`}
-  onClick={() => navigateTo("account")}
->
-  <span className="ngo-nav-icon">05</span>
-  Account Details
-</button>
+                        type="button"
+                        className={`ngo-nav-item ${activeSection === "account" ? "active" : ""
+                            }`}
+                        onClick={() => navigateTo("account")}
+                    >
+                        <span className="ngo-nav-icon">05</span>
+                        Account Details
+                    </button>
 
-                    
+
 
                 </nav>
 
@@ -622,19 +625,19 @@ const [accountError, setAccountError] = useState("");
 
             <main className="ngo-main">
                 <div className="ngo-mobile-topbar">
-  <button
-    type="button"
-    className="ngo-mobile-menu-button"
-    aria-label="Open navigation menu"
-    aria-expanded={mobileMenuOpen}
-    aria-controls="ngo-mobile-navigation"
-    onClick={() => setMobileMenuOpen(true)}
-  >
-    ☰
-  </button>
+                    <button
+                        type="button"
+                        className="ngo-mobile-menu-button"
+                        aria-label="Open navigation menu"
+                        aria-expanded={mobileMenuOpen}
+                        aria-controls="ngo-mobile-navigation"
+                        onClick={() => setMobileMenuOpen(true)}
+                    >
+                        ☰
+                    </button>
 
-  <span>FoodRescue</span>
-</div>
+                    <span>FoodRescue</span>
+                </div>
 
                 <header className="ngo-dashboard-header">
 
@@ -1026,77 +1029,77 @@ const [accountError, setAccountError] = useState("");
                 )}
                 {/* ACCOUNT DETAILS VIEW */}
 
-{activeSection === "account" && (
-  <section className="ngo-dashboard-card ngo-full-section">
-    <div className="ngo-card-heading">
-      <div>
-        <span>ACCOUNT INFORMATION</span>
-        <h2>Account Details</h2>
-      </div>
-    </div>
+                {activeSection === "account" && (
+                    <section className="ngo-dashboard-card ngo-full-section">
+                        <div className="ngo-card-heading">
+                            <div>
+                                <span>ACCOUNT INFORMATION</span>
+                                <h2>Account Details</h2>
+                            </div>
+                        </div>
 
-    <div className="ngo-account-details">
-  {accountLoading ? (
-    <p>Loading account details...</p>
-  ) : accountError ? (
-    <p role="alert">{accountError}</p>
-  ) : accountDetails ? (
-    <>
-      <div>
-        <span>ORGANIZATION NAME</span>
-        <strong>{accountDetails.organizationName}</strong>
-      </div>
+                        <div className="ngo-account-details">
+                            {accountLoading ? (
+                                <p>Loading account details...</p>
+                            ) : accountError ? (
+                                <p role="alert">{accountError}</p>
+                            ) : accountDetails ? (
+                                <>
+                                    <div>
+                                        <span>ORGANIZATION NAME</span>
+                                        <strong>{accountDetails.organizationName}</strong>
+                                    </div>
 
-      <div>
-        <span>USERNAME</span>
-        <strong>{accountDetails.username}</strong>
-      </div>
+                                    <div>
+                                        <span>USERNAME</span>
+                                        <strong>{accountDetails.username}</strong>
+                                    </div>
 
-      <div>
-        <span>ACCOUNT TYPE</span>
-        <strong>{accountDetails.role}</strong>
-      </div>
+                                    <div>
+                                        <span>ACCOUNT TYPE</span>
+                                        <strong>{accountDetails.role}</strong>
+                                    </div>
 
-      <div>
-        <span>ACCOUNT STATUS</span>
-        <strong>{accountDetails.accountStatus}</strong>
-      </div>
+                                    <div>
+                                        <span>ACCOUNT STATUS</span>
+                                        <strong>{accountDetails.accountStatus}</strong>
+                                    </div>
 
-      <div>
-        <span>EMAIL</span>
-        <strong>{accountDetails.email || "Not provided"}</strong>
-      </div>
+                                    <div>
+                                        <span>EMAIL</span>
+                                        <strong>{accountDetails.email || "Not provided"}</strong>
+                                    </div>
 
-      <div>
-        <span>PHONE NUMBER</span>
-        <strong>{accountDetails.phone || "Not provided"}</strong>
-      </div>
+                                    <div>
+                                        <span>PHONE NUMBER</span>
+                                        <strong>{accountDetails.phone || "Not provided"}</strong>
+                                    </div>
 
-      <div>
-        <span>ADDRESS</span>
-        <strong>{accountDetails.address || "Not provided"}</strong>
-      </div>
+                                    <div>
+                                        <span>ADDRESS</span>
+                                        <strong>{accountDetails.address || "Not provided"}</strong>
+                                    </div>
 
-      <div>
-        <span>REGISTRATION DATE</span>
-        <strong>
-          {accountDetails.registrationDate
-            ? new Date(accountDetails.registrationDate).toLocaleDateString("en-IN")
-            : "Not available"}
-        </strong>
-      </div>
+                                    <div>
+                                        <span>REGISTRATION DATE</span>
+                                        <strong>
+                                            {accountDetails.registrationDate
+                                                ? new Date(accountDetails.registrationDate).toLocaleDateString("en-IN")
+                                                : "Not available"}
+                                        </strong>
+                                    </div>
 
-      <div>
-        <span>APPROVAL STATUS</span>
-        <strong>{accountDetails.approvalStatus}</strong>
-      </div>
-    </>
-  ) : (
-    <p>Account information is unavailable.</p>
-  )}
-</div>
-  </section>
-)}
+                                    <div>
+                                        <span>APPROVAL STATUS</span>
+                                        <strong>{accountDetails.approvalStatus}</strong>
+                                    </div>
+                                </>
+                            ) : (
+                                <p>Account information is unavailable.</p>
+                            )}
+                        </div>
+                    </section>
+                )}
                 {/* INCOMING DELIVERIES VIEW */}
 
                 {activeSection === "deliveries" && (
