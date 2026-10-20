@@ -2268,3 +2268,4 @@ app.get(
 app.listen(PORT, () => {
     console.log(`FoodRescue backend running on http://localhost:${PORT}`);
 });
+module.exports = app;
